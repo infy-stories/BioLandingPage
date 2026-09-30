@@ -169,7 +169,7 @@
     function storyTextForPreview() {
         const story = storyInput.value.replace(/^\$+/, '').trim();
         const ageGender = ageGenderInput.value.trim();
-        return [ageGender, story].filter(Boolean).join('\n');
+        return [ageGender, story].filter(Boolean).join('\n\n');
     }
 
     function setPreviewScale() {
@@ -253,6 +253,10 @@
         return Math.ceil(totalSlides / SLIDES_PER_UPLOAD);
     }
 
+    function setSubmittingMessage(message) {
+        submitButton.textContent = message;
+    }
+
     async function submitStory(event) {
         event.preventDefault();
         const story = storyForSubmission();
@@ -265,7 +269,8 @@
 
         submitButton.disabled = true;
         submitButton.classList.add('btn-disabled');
-        submitStatus.textContent = 'Preparing your slides...';
+        setSubmittingMessage('Preparing slides...');
+        submitStatus.textContent = '';
         slides[0].querySelector('.story-timestamp').textContent = getFormattedTimestamp();
         let uploadToken = '';
         const batchCount = createUploadBatches(slides.length);
@@ -282,27 +287,34 @@
                 if (uploadToken) data.append('upload_token', uploadToken);
 
                 for (let index = start; index < end; index++) {
-                    submitStatus.textContent = `Rendering slide ${index + 1} of ${slides.length}...`;
+                    setSubmittingMessage(`Rendering slide ${index + 1} of ${slides.length}...`);
                     const image = await renderJpeg(slides[index]);
                     data.append('images', image, `slide-${index + 1}.jpg`);
                 }
 
-                submitStatus.textContent = `Sending slides ${start + 1}-${end} of ${slides.length}...`;
+                setSubmittingMessage('Cooking the backend...');
+                await new Promise(resolve => requestAnimationFrame(resolve));
+                setSubmittingMessage('Sending to admin...');
                 const response = await fetch(`${API_ROOT}/postConfession`, { method: 'POST', body: data });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'Story submission failed.');
                 uploadToken = result.nextUploadToken || '';
+                if (batchIndex < batchCount - 1) setSubmittingMessage('Preparing the next batch...');
             }
 
             form.hidden = true;
             submitControls.hidden = true;
             submissionSuccess.hidden = false;
             submitStatus.textContent = '';
+            if (typeof showToast === 'function') {
+                showToast('Posting to Instagram is subject to content and community rules.', 'success');
+            }
             if (previewObserver) previewObserver.disconnect();
         } catch (error) {
             submitStatus.textContent = error.message || 'Could not submit your story. Please try again.';
             submitButton.disabled = false;
             submitButton.classList.remove('btn-disabled');
+            submitButton.textContent = 'Submit Story';
         }
     }
 

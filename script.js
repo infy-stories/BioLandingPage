@@ -241,13 +241,14 @@ function writeConfession() {
         storyBtn.classList.add("btn-disabled");
     }
 
-    fetch(host + "/formStatus", {
+    const formStatusRequest = window.choiceFormStatusPromise || fetch(host + "/formStatus", {
         method: 'GET',
         headers: {
             'Content-Type': 'text/plain;charset=UTF-8',
         },
-    })
-        .then(response => response.text())
+    }).then(response => response.text());
+
+    formStatusRequest
         .then(responseText => {
             if (responseText === '1') {
                 showConfirmationModal("Make sure you are submitting only the story and not a query.", {
@@ -281,34 +282,16 @@ function showStoryExperienceChoice() {
 }
 
 function chooseLatestExperience() {
-    fetch(host + "/formStatus", {
-        method: 'GET',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    })
-        .then(response => response.text())
-        .then(responseText => {
-            if (responseText === '0') {
-                window.location.href = 'FormStatus.html';
-                return;
-            }
-            showConfirmationModal("Make sure you are submitting only the story and not a query.", {
-                confirmText: "Continue to story",
-                cancelText: "Write a query",
-            }).then(confirmed => {
-                if (confirmed) {
-                    window.location.href = 'writeConfessionRules.html?experience=new';
-                } else {
-                    window.location.href = 'writeQuery.html';
-                }
-            });
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast("Something went wrong... Proceeding anyway", "error");
-            setTimeout(() => {
-                window.location.href = 'writeConfessionRules.html?experience=new';
-            }, 1500);
-        });
+    showConfirmationModal("Make sure you are submitting only the story and not a query.", {
+        confirmText: "Continue to story",
+        cancelText: "Write a query",
+    }).then(confirmed => {
+        if (confirmed) {
+            window.location.href = 'writeConfessionRules.html?experience=new';
+        } else {
+            window.location.href = 'writeQuery.html';
+        }
+    });
 }
 
 function json(url) {
