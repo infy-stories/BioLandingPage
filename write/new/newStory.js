@@ -220,21 +220,22 @@
     }
 
     async function renderJpeg(slide) {
-        if (!window.htmlToImage) throw new Error('Image renderer did not load. Check your connection and try again.');
+        if (!window.html2canvas) throw new Error('Image renderer did not load. Check your connection and try again.');
         await document.fonts.ready;
         const originalParent = slide.parentNode;
         const originalNextSibling = slide.nextSibling;
         measurementHost.appendChild(slide);
         try {
-            const imageUrl = await window.htmlToImage.toJpeg(slide, {
-                quality: 0.84,
-                pixelRatio: IMAGE_WIDTH / 360,
-                cacheBust: true,
-                fontEmbedCSS: '',
+            const canvas = await window.html2canvas(slide, {
+                backgroundColor: null,
+                scale: IMAGE_WIDTH / 360,
                 width: 360,
                 height: IMAGE_HEIGHT / (IMAGE_WIDTH / 360),
+                logging: false,
             });
-            return await (await fetch(imageUrl)).blob();
+            return await new Promise((resolve, reject) => {
+                canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not render this slide. Please try again.')), 'image/jpeg', 0.84);
+            });
         } finally {
             if (originalParent) {
                 originalParent.insertBefore(slide, originalNextSibling);
