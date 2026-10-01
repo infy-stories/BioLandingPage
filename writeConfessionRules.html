@@ -15,7 +15,8 @@
     // Strict redirect: prevent direct access & only allow from index
     const ref = document.referrer.toLowerCase();
     const isFromIndex = ref.includes('index') || ref.endsWith('/');
-    if (!ref || !isFromIndex) {
+    const isFromChoice = ref.includes('choosestoryexperience');
+    if (!ref || (!isFromIndex && !isFromChoice)) {
       window.location.href = 'index.html';
     }
   </script>
@@ -78,7 +79,7 @@
         </div>
       </div>
 
-      <button onclick="location.href='writeConfession.html';" class="btn btn-primary agree-btn" hidden id="story">
+      <button onclick="continueToStoryForm();" class="btn btn-primary agree-btn" hidden id="story">
         Write Story ✍️
       </button>
 
@@ -87,6 +88,12 @@
           const slider = document.getElementById('agreeSlider');
           const wrap = document.getElementById('agreeSliderWrap');
           const btn = document.getElementById('story');
+          window.continueToStoryForm = function () {
+            const params = new URLSearchParams(window.location.search);
+            window.location.href = params.get('experience') === 'new'
+              ? 'write/new/'
+              : 'writeConfession.html';
+          };
           let isAgreed = false;
 
           slider.addEventListener('input', function () {

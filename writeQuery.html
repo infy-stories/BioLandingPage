@@ -16,7 +16,8 @@
     const ref = document.referrer.toLowerCase();
     const isFromIndex = ref.includes('index') || ref.endsWith('/');
     const isFromRules = ref.includes('writeconfessionrules') || ref.includes('aboutus');
-    if (!ref || (!isFromIndex && !isFromRules)) {
+    const isFromChoice = ref.includes('choosestoryexperience');
+    if (!ref || (!isFromIndex && !isFromRules && !isFromChoice)) {
       window.location.href = 'index.html';
     }
   </script>

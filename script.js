@@ -149,10 +149,87 @@ function postConfession() {
 
 
 function writeQuery() {
-    text = "Make sure you are writing the query in detail"
-    if (confirm(text) == true) {
-        window.open("writeQuery.html", "_self")
-    }
+    showConfirmationModal("Make sure you are writing the query in detail", {
+        confirmText: "Continue",
+        cancelText: "Cancel",
+    }).then(confirmed => {
+        if (confirmed) window.open("writeQuery.html", "_self");
+    });
+}
+
+function showConfirmationModal(message, options = {}) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'confirmation-overlay';
+
+        const modal = document.createElement('section');
+        modal.className = 'confirmation-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'confirmationTitle');
+        modal.setAttribute('aria-describedby', 'confirmationMessage');
+
+        const title = document.createElement('h2');
+        title.id = 'confirmationTitle';
+        title.textContent = options.title || 'Before you continue';
+
+        const description = document.createElement('p');
+        description.id = 'confirmationMessage';
+        description.textContent = message;
+
+        const actions = document.createElement('div');
+        actions.className = 'confirmation-actions';
+
+        const cancelButton = document.createElement('button');
+        cancelButton.type = 'button';
+        cancelButton.className = 'btn btn-secondary';
+        cancelButton.textContent = options.cancelText || 'Cancel';
+
+        const confirmButton = document.createElement('button');
+        confirmButton.type = 'button';
+        confirmButton.className = 'btn btn-primary';
+        confirmButton.textContent = options.confirmText || 'Continue';
+
+        actions.append(cancelButton, confirmButton);
+        modal.append(title, description, actions);
+        overlay.appendChild(modal);
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        function close(confirmed) {
+            document.removeEventListener('keydown', handleKeydown);
+            document.body.style.overflow = previousOverflow;
+            overlay.remove();
+            resolve(confirmed);
+        }
+
+        function handleKeydown(event) {
+            if (event.key === 'Escape') {
+                close(false);
+                return;
+            }
+            if (event.key === 'Tab') {
+                const buttons = [cancelButton, confirmButton];
+                if (event.shiftKey && document.activeElement === buttons[0]) {
+                    event.preventDefault();
+                    buttons[1].focus();
+                } else if (!event.shiftKey && document.activeElement === buttons[1]) {
+                    event.preventDefault();
+                    buttons[0].focus();
+                }
+            }
+        }
+
+        cancelButton.addEventListener('click', () => close(false));
+        confirmButton.addEventListener('click', () => close(true));
+        overlay.addEventListener('click', event => {
+            if (event.target === overlay) close(false);
+        });
+        document.addEventListener('keydown', handleKeydown);
+        document.body.appendChild(overlay);
+        confirmButton.focus();
+    });
 }
 
 function writeConfession() {
@@ -164,21 +241,26 @@ function writeConfession() {
         storyBtn.classList.add("btn-disabled");
     }
 
-    fetch(host + "/formStatus", {
+    const formStatusRequest = window.choiceFormStatusPromise || fetch(host + "/formStatus", {
         method: 'GET',
         headers: {
             'Content-Type': 'text/plain;charset=UTF-8',
         },
-    })
-        .then(response => response.text())
+    }).then(response => response.text());
+
+    formStatusRequest
         .then(responseText => {
             if (responseText === '1') {
-                const text = "Make sure you are submitting only the story and not a query.\nIf you are writing a query press 'Cancel'";
-                if (confirm(text)) {
-                    window.open("writeConfessionRules.html", "_self");
-                } else {
-                    window.open("writeQuery.html", "_self");
-                }
+                showConfirmationModal("Make sure you are submitting only the story and not a query.", {
+                    confirmText: "Continue to story",
+                    cancelText: "Write a query",
+                }).then(confirmed => {
+                    if (confirmed) {
+                        window.open("writeConfessionRules.html", "_self");
+                    } else {
+                        window.open("writeQuery.html", "_self");
+                    }
+                });
             } else if (responseText === '0') {
                 window.location.href = 'FormStatus.html';
             } else {
@@ -193,6 +275,23 @@ function writeConfession() {
                 window.open("writeConfessionRules.html", "_self");
             }, 1500);
         });
+}
+
+function showStoryExperienceChoice() {
+    window.location.href = 'chooseStoryExperience.html';
+}
+
+function chooseLatestExperience() {
+    showConfirmationModal("Make sure you are submitting only the story and not a query.", {
+        confirmText: "Continue to story",
+        cancelText: "Write a query",
+    }).then(confirmed => {
+        if (confirmed) {
+            window.location.href = 'writeConfessionRules.html?experience=new';
+        } else {
+            window.location.href = 'writeQuery.html';
+        }
+    });
 }
 
 function json(url) {
@@ -250,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.body.addEventListener('input', function (e) {
         if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+            if (e.target.hasAttribute('data-allow-unicode')) return;
             if (allowedCharsRegex.test(e.target.value)) {
                 e.target.value = e.target.value.replace(allowedCharsRegex, '');
                 showToast("Please use English language", "error", e.target);

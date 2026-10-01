@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Write an anonymous story with a live Instagram preview.">
+  <title>Latest Story Experience | Infy Stories</title>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q3SY8F9P01"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-Q3SY8F9P01');
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="./new-story.css">
+  <link rel="icon" href="../../res/logoBig-noBg.png" type="image/icon type">
+  <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script defer src="../../script.js"></script>
+  <script defer src="./newStory.js"></script>
+</head>
+
+<body class="new-story-page">
+  <header>
+    <h1 onclick="location.href='../../index.html';" class="logo">Infy Stories</h1>
+    <div class="nav-links">
+      <ul>
+        <li onclick="location.href='../../index.html';">Home</li>
+        <li onclick="location.href='../../imageCollection.html';">Photos</li>
+        <li onclick="location.href='../../aboutUs.html';">About Us</li>
+      </ul>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <main class="new-story-shell">
+    <div class="new-story-heading">
+      <p class="choice-eyebrow">INFY STORIES</p>
+      <h2>Write Your Story</h2>
+      <p>Your story stays anonymous. The preview updates as you write.</p>
+    </div>
+
+    <div class="new-story-layout">
+      <section class="story-compose" aria-label="Story details">
+        <form id="storyForm" novalidate>
+          <label for="ageGender">Age / gender <span>(optional)</span></label>
+          <input id="ageGender" name="age_gender" type="text" maxlength="80" placeholder="24/F" autocomplete="off">
+
+          <label for="storyText">Your story</label>
+          <textarea id="storyText" name="story" data-allow-unicode placeholder="Write away your thoughts..." spellcheck="true"></textarea>
+          <div class="story-input-meta">
+            <span id="characterCount" aria-live="polite">2000 characters remaining</span>
+            <span id="storyError" class="story-error" role="alert"></span>
+          </div>
+
+          <details class="advanced-settings">
+            <summary>Advanced</summary>
+            <div class="advanced-content">
+              <fieldset>
+                <legend>Story theme</legend>
+                <div class="theme-options" id="themeOptions" role="group" aria-label="Story theme"></div>
+              </fieldset>
+            </div>
+          </details>
+        </form>
+
+        <section class="submission-success" id="submissionSuccess" hidden>
+          <h3>Story submitted successfully.</h3>
+          <p>Your story has been received.</p>
+        </section>
+      </section>
+
+      <section class="story-preview-panel" aria-label="Live story preview">
+        <div class="preview-heading">
+          <h3>Live preview</h3>
+          <span>3:4</span>
+        </div>
+        <div class="preview-viewport" id="previewViewport">
+          <div class="preview-stage" id="previewStage"></div>
+        </div>
+        <div class="preview-navigation">
+          <button class="preview-arrow" id="previousSlide" type="button" aria-label="Previous slide" title="Previous slide" disabled>
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+          </button>
+          <span id="slidePosition" aria-live="polite">1 / 1</span>
+          <button class="preview-arrow" id="nextSlide" type="button" aria-label="Next slide" title="Next slide" disabled>
+            <i class="fas fa-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
+      </section>
+
+      <div class="story-submit-controls">
+        <button class="btn btn-primary submit-story-button" id="submitStory" type="submit" form="storyForm">Submit Story</button>
+        <p class="submit-status" id="submitStatus" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </main>
+
+  <div id="measurementHost" aria-hidden="true"></div>
+</body>
+
+</html>
