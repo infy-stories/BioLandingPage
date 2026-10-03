@@ -79,20 +79,12 @@
         </div>
       </div>
 
-      <button onclick="continueToStoryForm();" class="btn btn-primary agree-btn" hidden id="story">
-        Write Story ✍️
-      </button>
-
       <script>
         (function () {
           const slider = document.getElementById('agreeSlider');
           const wrap = document.getElementById('agreeSliderWrap');
-          const btn = document.getElementById('story');
           window.continueToStoryForm = function () {
-            const params = new URLSearchParams(window.location.search);
-            window.location.href = params.get('experience') === 'new'
-              ? 'write/new/'
-              : 'writeConfession.html';
+            window.location.href = 'write/new/';
           };
           let isAgreed = false;
 
@@ -101,17 +93,12 @@
             const pct = this.value;
             this.style.setProperty('--fill', pct + '%');
 
-            // Reveal button only when fully slided (> 95%)
             if (parseInt(pct) >= 95) {
               isAgreed = true;
               this.value = 100;
               this.style.setProperty('--fill', '100%');
               wrap.classList.add('agreed');
-              setTimeout(function () {
-                wrap.style.display = 'none';
-                btn.hidden = false;
-                btn.classList.add('agree-reveal');
-              }, 400);
+              setTimeout(window.continueToStoryForm, 400);
             }
           });
 

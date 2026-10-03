@@ -277,17 +277,13 @@ function writeConfession() {
         });
 }
 
-function showStoryExperienceChoice() {
-    window.location.href = 'chooseStoryExperience.html';
-}
-
 function chooseLatestExperience() {
     showConfirmationModal("Make sure you are submitting only the story and not a query.", {
         confirmText: "Continue to story",
         cancelText: "Write a query",
     }).then(confirmed => {
         if (confirmed) {
-            window.location.href = 'writeConfessionRules.html?experience=new';
+            window.location.href = 'writeConfessionRules.html';
         } else {
             window.location.href = 'writeQuery.html';
         }

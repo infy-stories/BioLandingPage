@@ -280,9 +280,10 @@
 .story-brand-name {
   padding-left: 10px;
   border-left: 1px solid currentColor;
-  font-size: 8px;
+  /* font-family: Georgia, serif; */
+  font-size: 10px;
   font-weight: 600;
-  line-height: 12px;
+  line-height: 14px;
   white-space: nowrap;
 }
 
