@@ -15,9 +15,18 @@
     // Strict redirect: prevent direct access & only allow from index
     const ref = document.referrer.toLowerCase();
     const isFromIndex = ref.includes('index') || ref.endsWith('/');
-    const isFromChoice = ref.includes('choosestoryexperience');
-    if (!ref || (!isFromIndex && !isFromChoice)) {
+    let fromStoryLink = false;
+    try {
+      const created = Number(sessionStorage.getItem('storyRulesEntry'));
+      sessionStorage.removeItem('storyRulesEntry');
+      fromStoryLink = created > 0 && Date.now() - created >= 0 && Date.now() - created <= 300000;
+    } catch {}
+    const permittedRefresh = ['reload', 'back_forward'].includes(performance.getEntriesByType('navigation')[0]?.type)
+      && history.state?.storyRulesAllowed;
+    if (!fromStoryLink && !permittedRefresh && (!ref || !isFromIndex)) {
       window.location.href = 'index.html';
+    } else {
+      history.replaceState({ ...history.state, storyRulesAllowed: true }, '');
     }
   </script>
   <meta charset="UTF-8">
@@ -70,6 +79,14 @@
       </p>
 
 
+      <section class="ai-generation-notice" aria-labelledby="aiNoticeHeading">
+        <h2 id="aiNoticeHeading"><i class="fas fa-magic" aria-hidden="true"></i> AI Title Suggestions</h2>
+        <p>If <strong>&quot;Generate Titles for my story&quot;</strong> is selected, <strong>your story text is sent to Google Gemini</strong> to generate three title suggestions. Your story is submitted independently; <strong>Title Generation and Selection are OPTIONAL</strong>.</p>
+        <p><mark>Do not include sensitive information, private contact details, or identifying details.</mark> Google processes the text under its <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer">Gemini API terms</a>, including the applicable free-tier data-use terms.</p>
+        <p>AI suggestions may be inaccurate. <strong>Review before choosing.</strong></p>
+        <p>By sliding to agree, you also consent to this processing when you choose title generation.</p>
+      </section>
+
       <!-- ── Slide-to-Agree ── -->
       <div class="agree-slider-wrap" id="agreeSliderWrap">
         <p class="slider-hint">Slide to agree to the rules ➔</p>
@@ -79,20 +96,15 @@
         </div>
       </div>
 
-      <button onclick="continueToStoryForm();" class="btn btn-primary agree-btn" hidden id="story">
-        Write Story ✍️
-      </button>
-
       <script>
         (function () {
           const slider = document.getElementById('agreeSlider');
           const wrap = document.getElementById('agreeSliderWrap');
-          const btn = document.getElementById('story');
           window.continueToStoryForm = function () {
-            const params = new URLSearchParams(window.location.search);
-            window.location.href = params.get('experience') === 'new'
-              ? 'write/new/'
-              : 'writeConfession.html';
+            try {
+              sessionStorage.setItem('storyEditorEntry', JSON.stringify({ mode: 'user', created: Date.now() }));
+            } catch {}
+            window.location.href = 'write/new/';
           };
           let isAgreed = false;
 
@@ -101,17 +113,12 @@
             const pct = this.value;
             this.style.setProperty('--fill', pct + '%');
 
-            // Reveal button only when fully slided (> 95%)
             if (parseInt(pct) >= 95) {
               isAgreed = true;
               this.value = 100;
               this.style.setProperty('--fill', '100%');
               wrap.classList.add('agreed');
-              setTimeout(function () {
-                wrap.style.display = 'none';
-                btn.hidden = false;
-                btn.classList.add('agree-reveal');
-              }, 400);
+              setTimeout(window.continueToStoryForm, 400);
             }
           });
 
