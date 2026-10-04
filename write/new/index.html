@@ -6,6 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Write an anonymous story with a live Instagram preview.">
   <title>Latest Story Experience | Infy Stories</title>
+  <script>
+    const referringPage = document.referrer ? new URL(document.referrer) : null;
+    const fromSameSite = referringPage && referringPage.origin === window.location.origin;
+    window.storyAdminEntry = Boolean(fromSameSite && referringPage.pathname === new URL('../../aboutUs.html', window.location.href).pathname);
+    window.storyEntryAllowed = Boolean(window.storyAdminEntry || (fromSameSite && referringPage.pathname === new URL('../../writeConfessionRules.html', window.location.href).pathname));
+    if (!window.storyEntryAllowed) window.location.replace('../../index.html');
+  </script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q3SY8F9P01"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -55,15 +62,20 @@
             <span id="storyError" class="story-error" role="alert"></span>
           </div>
 
-          <details class="advanced-settings">
-            <summary>Advanced</summary>
-            <div class="advanced-content">
-              <fieldset>
-                <legend>Palette</legend>
-                <div class="theme-options" id="themeOptions" role="group" aria-label="Palette"></div>
-              </fieldset>
-            </div>
-          </details>
+          <fieldset class="palette-settings">
+            <legend class="palette-heading">
+              <span>Palette</span>
+              <button class="preview-arrow" id="randomPalette" type="button" aria-label="Random palette" title="Random palette">
+                <i class="fas fa-random" aria-hidden="true"></i>
+              </button>
+            </legend>
+            <div class="theme-options" id="themeOptions" role="group" aria-label="Palette"></div>
+          </fieldset>
+
+          <div class="admin-settings" id="adminSettings" hidden>
+            <label for="storyDateTime">Slide date / time <span>(IST)</span></label>
+            <input id="storyDateTime" name="story_datetime" type="datetime-local" step="60">
+          </div>
         </form>
 
         <section class="submission-success" id="submissionSuccess" hidden>
@@ -75,7 +87,6 @@
       <section class="story-preview-panel" aria-label="Live story preview">
         <div class="preview-heading">
           <h3>Live preview</h3>
-          <span>3:4</span>
         </div>
         <div class="preview-viewport" id="previewViewport">
           <div class="preview-stage" id="previewStage"></div>

@@ -1,28 +1,36 @@
 (() => {
+    if (!window.storyEntryAllowed) return;
+
     const IMAGE_WIDTH = 1080;
     const IMAGE_HEIGHT = 1440;
     const STORY_FONT_SIZE = 42;
     const NORMAL_STORY_LIMIT = 2000;
     const SLIDES_PER_UPLOAD = 10;
     const API_ROOT = 'https://jarvis-ihcp.vercel.app/api';
+    const DARK_THEME_TEXT = '#F5F1E8';
+    const LIGHT_THEME_TEXT = '#292725';
 
     const themes = [
-        { name: 'Midnight', emoji: '\uD83D\uDDA4', background: '#111111', text: '#FFFFFF', accent: '#2563EB' },
-        { name: 'Cocoa', emoji: '\uD83E\uDD0E', background: '#4A3028', text: '#FFF5E6', accent: '#C65D24' },
-        { name: 'Burgundy', emoji: '\uD83C\uDF77', background: '#5A1725', text: '#FFF4EA', accent: '#D58A9A' },
-        { name: 'Forest', emoji: '\uD83C\uDF32', background: '#17352D', text: '#F5F0E6', accent: '#8FB89F' },
-        { name: 'Navy', emoji: '\uD83C\uDF0A', background: '#101D35', text: '#F4F1EA', accent: '#35B5A4' },
-        { name: 'Plum', emoji: '\uD83D\uDC9C', background: '#351B35', text: '#F7EFE2', accent: '#C889B5' },
-        { name: 'Olive', emoji: '\uD83E\uDED2', background: '#303524', text: '#F3EBDD', accent: '#D3A62A' },
-        { name: 'Indigo', emoji: '\uD83D\uDD2E', background: '#20204A', text: '#F5F4F0', accent: '#A99BE8' },
-        { name: 'Terracotta', emoji: '\uD83E\uDDF1', background: '#6E3428', text: '#FFF0D8', accent: '#E99A73' },
-        { name: 'Slate', emoji: '\uD83E\uDE75', background: '#263746', text: '#EEF4F5', accent: '#62B6D9' },
+        { name: 'Midnight', emoji: '\uD83D\uDDA4', background: '#111111', text: DARK_THEME_TEXT, accent: '#2563EB' },
+        { name: 'Cocoa', emoji: '\uD83E\uDD0E', background: '#4A3028', text: DARK_THEME_TEXT, accent: '#C65D24' },
+        { name: 'Burgundy', emoji: '\uD83C\uDF77', background: '#5A1725', text: DARK_THEME_TEXT, accent: '#D58A9A' },
+        { name: 'Forest', emoji: '\uD83C\uDF32', background: '#17352D', text: DARK_THEME_TEXT, accent: '#8FB89F' },
+        { name: 'Navy', emoji: '\uD83C\uDF0A', background: '#101D35', text: DARK_THEME_TEXT, accent: '#35B5A4' },
+        { name: 'Plum', emoji: '\uD83D\uDC9C', background: '#351B35', text: DARK_THEME_TEXT, accent: '#C889B5' },
+        { name: 'Ivory', emoji: '\uD83C\uDF3E', background: '#F7F3EA', text: LIGHT_THEME_TEXT, accent: '#315FE8' },
+        { name: 'Blush', emoji: '\uD83C\uDF38', background: '#F7E4E4', text: LIGHT_THEME_TEXT, accent: '#C75C73' },
+        { name: 'Sage Mist', emoji: '\uD83C\uDF3F', background: '#E4EEE5', text: LIGHT_THEME_TEXT, accent: '#39705A' },
+        { name: 'Powder Blue', emoji: '\uD83E\uDE75', background: '#E3EFF5', text: LIGHT_THEME_TEXT, accent: '#168F96' },
+        { name: 'Peach', emoji: '\uD83C\uDF51', background: '#F9E4D5', text: LIGHT_THEME_TEXT, accent: '#D56738' },
+        { name: 'Lavender Mist', emoji: '\uD83E\uDEBB', background: '#ECE7F5', text: LIGHT_THEME_TEXT, accent: '#7561B5' },
     ];
     const backgroundCache = new Map();
 
     const form = document.getElementById('storyForm');
     const storyInput = document.getElementById('storyText');
     const ageGenderInput = document.getElementById('ageGender');
+    const adminTimestampInput = document.getElementById('storyDateTime');
+    const adminEntry = window.storyAdminEntry;
     const previewViewport = document.getElementById('previewViewport');
     const previewStage = document.getElementById('previewStage');
     const measurementHost = document.getElementById('measurementHost');
@@ -36,6 +44,11 @@
     let slides = [];
     let activeSlide = 0;
     let previewObserver;
+
+    if (adminEntry) {
+        storyInput.value = '$ ';
+        document.getElementById('adminSettings').hidden = false;
+    }
 
     function setButtonPressed(container, selectedButton) {
         container.querySelectorAll('button').forEach(button => {
@@ -167,34 +180,47 @@
             fill('M 227 480 Q 268 412 307 444 Q 336 421 360 396 L 360 480 Z', 0.37);
             sprig(316, 50, -0.25, 0.85);
             break;
-        case 'Olive':
-            fill('M 256 0 Q 272 34 314 36 Q 342 45 360 93 L 360 0 Z', 0.28);
-            fill('M 0 305 C 42 338 11 394 48 426 Q 62 461 117 480 L 0 480 Z', 0.58);
-            fill('M 283 480 Q 293 425 360 398 L 360 480 Z', 0.15);
-            context.strokeStyle = theme.text;
+        case 'Ivory':
+            fill('M 256 0 Q 272 34 314 36 Q 342 45 360 93 L 360 0 Z', 0.13);
+            fill('M 0 305 C 42 338 11 394 48 426 Q 62 461 117 480 L 0 480 Z', 0.2);
+            fill('M 283 480 Q 293 425 360 398 L 360 480 Z', 0.12);
             sprig(297, 98, -0.58, 0.78);
             stroke('M 182 480 C 201 432 244 465 278 456 S 328 440 363 425', 0.55);
             break;
-        case 'Indigo':
-            fill('M 277 0 C 233 40 304 47 315 78 Q 331 96 360 108 L 360 0 Z', 0.32);
-            fill('M 0 283 C 32 314 7 351 26 385 C 50 424 33 457 83 480 L 0 480 Z', 0.55);
-            fill('M 221 480 C 249 438 288 471 314 438 Q 330 425 360 442 L 360 480 Z', 0.45);
+        case 'Blush':
+            fill('M 287 0 C 265 36 328 49 319 81 Q 341 103 360 120 L 360 0 Z', 0.18);
+            fill('M 0 359 C 37 375 17 424 64 449 Q 84 462 95 480 L 0 480 Z', 0.2);
+            fill('M 259 480 Q 299 423 360 421 L 360 480 Z', 0.14);
+            sprig(335, 45, -0.15, 0.77);
+            stroke('M 211 480 Q 226 443 274 458 T 363 433 M 347 114 Q 316 127 325 157', 0.55);
+            break;
+        case 'Sage Mist':
+            fill('M 316 0 C 345 28 325 54 349 85 L 360 109 L 360 0 Z', 0.17);
+            fill('M 0 325 C 31 340 18 378 52 407 Q 42 450 106 480 L 0 480 Z', 0.15);
+            fill('M 225 480 C 254 451 285 465 290 421 Q 299 390 360 363 L 360 480 Z', 0.17);
+            sprig(321, 35, -0.4, 0.95, true);
+            stroke('M 237 480 Q 259 442 306 428 T 363 394', 0.55);
+            break;
+        case 'Lavender Mist':
+            fill('M 277 0 C 233 40 304 47 315 78 Q 331 96 360 108 L 360 0 Z', 0.16);
+            fill('M 0 283 C 32 314 7 351 26 385 C 50 424 33 457 83 480 L 0 480 Z', 0.2);
+            fill('M 221 480 C 249 438 288 471 314 438 Q 330 425 360 442 L 360 480 Z', 0.18);
             [[309, 153, 13], [328, 198, 7], [289, 109, 3], [299, 119, 2]].forEach(([x, y, size]) => {
                 fill(`M ${x} ${y - size} Q ${x} ${y} ${x + size / 2} ${y} Q ${x} ${y} ${x} ${y + size} Q ${x} ${y} ${x - size / 2} ${y} Q ${x} ${y} ${x} ${y - size}`, 0.8);
             });
             stroke('M 0 305 C 31 331 19 366 2 389 M 241 480 Q 284 437 323 479', 0.75);
             break;
-        case 'Terracotta':
-            fill('M 290 0 Q 320 39 360 44 L 360 0 Z', 0.22);
-            fill('M 0 322 C 29 359 7 407 43 430 Q 66 456 110 480 L 0 480 Z', 0.36);
-            fill('M 224 480 C 253 458 248 411 292 408 Q 330 413 360 383 L 360 480 Z', 0.2);
+        case 'Peach':
+            fill('M 290 0 Q 320 39 360 44 L 360 0 Z', 0.14);
+            fill('M 0 322 C 29 359 7 407 43 430 Q 66 456 110 480 L 0 480 Z', 0.22);
+            fill('M 224 480 C 253 458 248 411 292 408 Q 330 413 360 383 L 360 480 Z', 0.14);
             sprig(317, 45, 0.18, 0.87);
             stroke('M 244 480 Q 260 439 296 410 M 255 121 Q 307 105 325 55', 0.6);
             break;
-        case 'Slate':
-            fill('M 323 0 C 302 25 345 44 337 68 Q 335 81 360 95 L 360 0 Z', 0.3);
-            fill('M 0 332 C 42 352 7 403 41 425 Q 72 447 92 480 L 0 480 Z', 0.39);
-            fill('M 229 480 Q 258 453 265 421 C 275 382 330 390 360 345 L 360 480 Z', 0.35);
+        case 'Powder Blue':
+            fill('M 323 0 C 302 25 345 44 337 68 Q 335 81 360 95 L 360 0 Z', 0.16);
+            fill('M 0 332 C 42 352 7 403 41 425 Q 72 447 92 480 L 0 480 Z', 0.2);
+            fill('M 229 480 Q 258 453 265 421 C 275 382 330 390 360 345 L 360 480 Z', 0.18);
             stroke('M 313 -5 C 285 34 337 62 345 87 S 351 106 362 115', 0.85);
             break;
         }
@@ -215,6 +241,13 @@
     }
 
     buildThemeOptions();
+    document.getElementById('randomPalette').addEventListener('click', () => {
+        const alternatives = themes.filter(theme => theme !== selectedTheme);
+        selectedTheme = alternatives[Math.floor(Math.random() * alternatives.length)];
+        const container = document.getElementById('themeOptions');
+        setButtonPressed(container, container.querySelectorAll('button')[themes.indexOf(selectedTheme)]);
+        applySlideColors();
+    });
 
     function createSlide(index) {
         const slide = document.createElement('article');
@@ -277,7 +310,15 @@
         return slide;
     }
 
-    function getFormattedTimestamp(date = new Date()) {
+    function getStoryDate() {
+        if (adminEntry && adminTimestampInput.value) {
+            const selectedDate = new Date(`${adminTimestampInput.value}+05:30`);
+            if (!Number.isNaN(selectedDate.getTime())) return selectedDate;
+        }
+        return new Date();
+    }
+
+    function getFormattedTimestamp(date = getStoryDate()) {
         const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
             timeZone: 'Asia/Kolkata',
             day: 'numeric',
@@ -372,6 +413,7 @@
 
     storyInput.addEventListener('input', updateCharacterCount);
     ageGenderInput.addEventListener('input', updatePreview);
+    adminTimestampInput.addEventListener('input', updatePreview);
     document.getElementById('previousSlide').addEventListener('click', () => showSlide(activeSlide - 1));
     document.getElementById('nextSlide').addEventListener('click', () => showSlide(activeSlide + 1));
     if ('ResizeObserver' in window) {
