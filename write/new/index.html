@@ -165,6 +165,30 @@
     </div>
   </main>
 
+  <section class="new-story-shell admin-title-tool" id="adminTitleTool" hidden aria-labelledby="adminTitleHeading">
+    <h2 id="adminTitleHeading">Title Card</h2>
+    <div class="new-story-layout">
+      <form id="adminTitleForm" class="admin-title-controls">
+        <label for="adminTitleText">Title</label>
+        <input id="adminTitleText" type="text" maxlength="45" autocomplete="off" required>
+        <fieldset class="palette-settings">
+          <legend class="palette-heading">Palette</legend>
+          <div class="theme-options" id="adminTitleThemes" role="group" aria-label="Title card palette"></div>
+        </fieldset>
+        <button id="downloadAdminTitle" type="submit" class="btn btn-primary title-action-button" disabled>
+          <i class="fas fa-download" aria-hidden="true"></i>
+          <span>Download JPEG</span>
+        </button>
+        <p id="adminTitleStatus" class="submit-status" role="status"></p>
+      </form>
+      <div class="story-preview-panel" aria-label="Standalone title preview">
+        <div class="preview-viewport" id="adminTitleViewport">
+          <div class="preview-stage" id="adminTitleStage"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div id="measurementHost" aria-hidden="true"></div>
 </body>
 

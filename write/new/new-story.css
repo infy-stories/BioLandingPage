@@ -270,6 +270,36 @@
   text-align: center;
 }
 
+.admin-title-tool[hidden] {
+  display: none;
+}
+
+.admin-title-tool {
+  padding-top: 0;
+}
+
+.admin-title-tool h2 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.admin-title-controls {
+  min-width: 0;
+}
+
+.admin-title-controls input[type="text"] {
+  width: 100%;
+  max-width: none;
+}
+
+#downloadAdminTitle:disabled {
+  background: var(--input-bg);
+  color: var(--text-muted);
+  opacity: 0.65;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+
 .title-suggestions h3 {
   font-size: 1rem;
 }
