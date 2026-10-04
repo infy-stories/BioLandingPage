@@ -153,7 +153,8 @@ function writeQuery() {
         confirmText: "Continue",
         cancelText: "Cancel",
     }).then(confirmed => {
-        if (confirmed) window.open("writeQuery.html", "_self");
+        if (confirmed === true) window.open("writeQuery.html", "_self");
+        else window.location.href = 'index.html';
     });
 }
 
@@ -177,6 +178,16 @@ function showConfirmationModal(message, options = {}) {
         description.id = 'confirmationMessage';
         description.textContent = message;
 
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'confirmation-close';
+        closeButton.setAttribute('aria-label', 'Close dialog');
+        closeButton.title = 'Close dialog';
+        const closeIcon = document.createElement('i');
+        closeIcon.className = 'fas fa-times';
+        closeIcon.setAttribute('aria-hidden', 'true');
+        closeButton.appendChild(closeIcon);
+
         const actions = document.createElement('div');
         actions.className = 'confirmation-actions';
 
@@ -191,7 +202,7 @@ function showConfirmationModal(message, options = {}) {
         confirmButton.textContent = options.confirmText || 'Continue';
 
         actions.append(cancelButton, confirmButton);
-        modal.append(title, description, actions);
+        modal.append(closeButton, title, description, actions);
         overlay.appendChild(modal);
 
         const previousOverflow = document.body.style.overflow;
@@ -206,15 +217,15 @@ function showConfirmationModal(message, options = {}) {
 
         function handleKeydown(event) {
             if (event.key === 'Escape') {
-                close(false);
+                close(null);
                 return;
             }
             if (event.key === 'Tab') {
-                const buttons = [cancelButton, confirmButton];
+                const buttons = [closeButton, cancelButton, confirmButton];
                 if (event.shiftKey && document.activeElement === buttons[0]) {
                     event.preventDefault();
-                    buttons[1].focus();
-                } else if (!event.shiftKey && document.activeElement === buttons[1]) {
+                    buttons[buttons.length - 1].focus();
+                } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
                     event.preventDefault();
                     buttons[0].focus();
                 }
@@ -223,8 +234,9 @@ function showConfirmationModal(message, options = {}) {
 
         cancelButton.addEventListener('click', () => close(false));
         confirmButton.addEventListener('click', () => close(true));
+        closeButton.addEventListener('click', () => close(null));
         overlay.addEventListener('click', event => {
-            if (event.target === overlay) close(false);
+            if (!event.target.closest('button')) close(null);
         });
         document.addEventListener('keydown', handleKeydown);
         document.body.appendChild(overlay);
@@ -255,26 +267,42 @@ function writeConfession() {
                     confirmText: "Continue to story",
                     cancelText: "Write a query",
                 }).then(confirmed => {
-                    if (confirmed) {
-                        window.open("writeConfessionRules.html", "_self");
-                    } else {
+                    if (confirmed === true) {
+                        openStoryRules();
+                    } else if (confirmed === false) {
                         window.open("writeQuery.html", "_self");
+                    } else {
+                        window.location.href = 'index.html';
                     }
                 });
             } else if (responseText === '0') {
                 window.location.href = 'FormStatus.html';
             } else {
                 console.warn("Unexpected response:", responseText);
-                window.open("writeConfessionRules.html", "_self");
+                openStoryRules();
             }
         })
         .catch(error => {
             console.error('Error:', error);
             showToast("Something went wrong... Proceeding anyway", "error");
             setTimeout(() => {
-                window.open("writeConfessionRules.html", "_self");
+                openStoryRules();
             }, 1500);
         });
+}
+
+function openStoryRules() {
+    try {
+        sessionStorage.setItem('storyRulesEntry', String(Date.now()));
+    } catch {}
+    window.location.href = 'writeConfessionRules.html';
+}
+
+function openAdminStory() {
+    try {
+        sessionStorage.setItem('storyEditorEntry', JSON.stringify({ mode: 'admin', created: Date.now() }));
+    } catch {}
+    window.location.href = 'write/new/';
 }
 
 function chooseLatestExperience() {
@@ -282,10 +310,12 @@ function chooseLatestExperience() {
         confirmText: "Continue to story",
         cancelText: "Write a query",
     }).then(confirmed => {
-        if (confirmed) {
-            window.location.href = 'writeConfessionRules.html';
-        } else {
+        if (confirmed === true) {
+            openStoryRules();
+        } else if (confirmed === false) {
             window.location.href = 'writeQuery.html';
+        } else {
+            window.location.href = 'index.html';
         }
     });
 }

@@ -40,6 +40,18 @@
     const storyError = document.getElementById('storyError');
     const submitControls = document.querySelector('.story-submit-controls');
     const submissionSuccess = document.getElementById('submissionSuccess');
+    const generateTitlesInput = document.getElementById('generateTitles');
+    const MAX_TITLE_RETRIES = 1;
+    const titleSuggestions = document.getElementById('titleSuggestions');
+    const titleGenerationStatus = document.getElementById('titleGenerationStatus');
+    const titleOptions = document.getElementById('titleOptions');
+    const titleForm = document.getElementById('titleForm');
+    const retryTitles = document.getElementById('retryTitles');
+    const submitTitleButton = document.getElementById('submitTitle');
+    const titleDeliveryStatus = document.getElementById('titleDeliveryStatus');
+    const previewTabs = document.getElementById('previewTabs');
+    const previewNavigation = document.querySelector('.preview-navigation');
+    let submittedStory;
     let selectedTheme = themes[Math.floor(Math.random() * themes.length)];
     let slides = [];
     let activeSlide = 0;
@@ -462,11 +474,178 @@
         submitButton.textContent = message;
     }
 
+    async function apiJson(path, options, timeout = 60000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+            const response = await fetch(`${API_ROOT}/${path}`, { ...options, signal: controller.signal });
+            const result = await response.json();
+            if (!response.ok) {
+                throw Object.assign(new Error(result.error || 'Request failed. Please try again later.'), { httpStatus: response.status });
+            }
+            return result;
+        } catch (error) {
+            if (error.name === 'AbortError') throw new Error('Request timed out. Please try again later.');
+            throw error;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    function syncTitleStatus(snapshot) {
+        if (snapshot !== submittedStory) return;
+        if (!snapshot.generateTitles || snapshot.titleSent) {
+            titleSuggestions.hidden = true;
+            return;
+        }
+        if (!snapshot.storySent) return;
+        titleSuggestions.hidden = false;
+        titleGenerationStatus.textContent = snapshot.titlesLoading
+            ? 'Generating title suggestions...'
+            : snapshot.titleError || '';
+        titleGenerationStatus.hidden = !titleGenerationStatus.textContent;
+        retryTitles.hidden = !snapshot.titleError || (snapshot.titleRetries || 0) >= MAX_TITLE_RETRIES;
+        retryTitles.disabled = snapshot.titlesLoading || !snapshot.submissionToken;
+        titleForm.hidden = !snapshot.titles || !snapshot.submissionToken;
+        submitTitleButton.disabled = !snapshot.submissionToken || !snapshot.selectedTitle || snapshot.titleSending || snapshot.titleSent;
+    }
+
+    function createTitleSlide(snapshot, title) {
+        const slide = createSlide(0);
+        slide.classList.add('story-title-slide');
+        slide.style.backgroundColor = snapshot.theme.background;
+        slide.style.color = snapshot.theme.text;
+        slide.style.setProperty('--slide-accent', snapshot.theme.accent);
+        slide.style.setProperty('--slide-background', snapshot.theme.background);
+        slide.querySelector('.story-background').src = drawBackground(snapshot.theme);
+        slide.querySelector('.story-footer').remove();
+        slide.querySelector('.story-slide-number').remove();
+        const body = slide.querySelector('.story-body');
+        body.className = 'story-title-body';
+        const heading = document.createElement('h1');
+        heading.className = 'story-title-text';
+        heading.textContent = title;
+        const accent = document.createElement('div');
+        accent.className = 'story-title-accent';
+        body.append(heading, accent);
+        return slide;
+    }
+
+    function showTitlePreview() {
+        if (!submittedStory?.selectedTitle) return;
+        if (!submittedStory.titleSlide) {
+            submittedStory.titleSlide = createTitleSlide(submittedStory, submittedStory.selectedTitle);
+        }
+        previewStage.replaceChildren(submittedStory.titleSlide);
+        previewNavigation.hidden = true;
+        previewTabs.hidden = false;
+        setButtonPressed(previewTabs, document.getElementById('previewTitle'));
+        setPreviewScale();
+    }
+
+    function buildTitleChoices(snapshot) {
+        titleOptions.replaceChildren();
+        snapshot.titles.forEach((title, index) => {
+            const label = document.createElement('label');
+            label.className = 'title-option';
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'suggested_title';
+            radio.value = title;
+            radio.id = `suggestedTitle${index}`;
+            radio.addEventListener('change', () => {
+                snapshot.selectedTitle = title;
+                snapshot.titleSlide = null;
+                showTitlePreview();
+                syncTitleStatus(snapshot);
+            });
+            const text = document.createElement('span');
+            text.textContent = title;
+            label.append(radio, text);
+            titleOptions.appendChild(label);
+        });
+    }
+
+    async function requestTitles(snapshot) {
+        if (!snapshot?.generateTitles || snapshot.titlesLoading || snapshot.titles) return;
+        snapshot.titlesLoading = true;
+        snapshot.titleError = '';
+        syncTitleStatus(snapshot);
+        try {
+            const result = await apiJson('generate-titles', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    story: snapshot.story,
+                    submissionIntent: snapshot.storySent ? undefined : snapshot.intent,
+                    submissionToken: snapshot.submissionToken || undefined,
+                }),
+            });
+            if (!Array.isArray(result.titles) || result.titles.length !== 3
+                    || new Set(result.titles).size !== 3
+                    || result.titles.some(title => typeof title !== 'string' || !title.trim() || Array.from(title).length > 45)) {
+                throw new Error('AI returned invalid title suggestions. Please try again later.');
+            }
+            if (snapshot !== submittedStory) return;
+            snapshot.titles = result.titles;
+            buildTitleChoices(snapshot);
+        } catch (error) {
+            snapshot.titleError = 'Title generation failed.';
+        } finally {
+            snapshot.titlesLoading = false;
+            syncTitleStatus(snapshot);
+        }
+    }
+
+    document.getElementById('previewStory').addEventListener('click', () => {
+        previewNavigation.hidden = false;
+        setButtonPressed(previewTabs, document.getElementById('previewStory'));
+        showSlide(activeSlide);
+    });
+    document.getElementById('previewTitle').addEventListener('click', showTitlePreview);
+    retryTitles.addEventListener('click', () => {
+        if (!submittedStory || submittedStory.titlesLoading || (submittedStory.titleRetries || 0) >= MAX_TITLE_RETRIES) return;
+        submittedStory.titleRetries = (submittedStory.titleRetries || 0) + 1;
+        void requestTitles(submittedStory);
+    });
+    titleForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const snapshot = submittedStory;
+        if (!snapshot?.submissionToken || !snapshot.selectedTitle || snapshot.titleSending || snapshot.titleSent) return;
+        snapshot.titleSending = true;
+        titleOptions.querySelectorAll('input').forEach(input => { input.disabled = true; });
+        titleDeliveryStatus.textContent = 'Rendering title slide...';
+        syncTitleStatus(snapshot);
+        try {
+            const image = await renderJpeg(snapshot.titleSlide || createTitleSlide(snapshot, snapshot.selectedTitle));
+            const data = new FormData();
+            data.append('submission_token', snapshot.submissionToken);
+            data.append('title', snapshot.selectedTitle);
+            data.append('image', image, 'title-slide.jpg');
+            titleDeliveryStatus.textContent = 'Sending title slide...';
+            await apiJson('submit-title-image', { method: 'POST', body: data });
+            snapshot.titleSent = true;
+            titleDeliveryStatus.textContent = '';
+            submissionSuccess.hidden = true;
+            document.querySelector('.story-compose').hidden = true;
+            document.querySelector('.new-story-heading').hidden = true;
+            document.querySelector('.new-story-layout').classList.add('story-complete');
+            document.getElementById('storyHomeControls').hidden = false;
+            showTitlePreview();
+        } catch (error) {
+            titleDeliveryStatus.textContent = 'Title slide submission failed.';
+        } finally {
+            snapshot.titleSending = false;
+            titleOptions.querySelectorAll('input').forEach(input => { input.disabled = snapshot.titleSent; });
+            syncTitleStatus(snapshot);
+        }
+    });
+
     async function submitStory(event) {
         event.preventDefault();
+        if (submitButton.disabled || submittedStory?.storySent) return;
         const story = storyForSubmission();
         const isAdmin = story.startsWith('$');
-        if (!story || (!isAdmin && Array.from(story).length > NORMAL_STORY_LIMIT)) {
+        if (!story.replace(/^\$+/, '').trim() || (!isAdmin && Array.from(story).length > NORMAL_STORY_LIMIT)) {
             storyError.textContent = story ? 'Stories are limited to 2000 characters.' : 'Please enter your story.';
             storyInput.focus();
             return;
@@ -476,20 +655,47 @@
         submitButton.classList.add('btn-disabled');
         setSubmittingMessage('Preparing slides...');
         submitStatus.textContent = '';
-        slides[0].querySelector('.story-timestamp').textContent = getFormattedTimestamp();
+        const ageGender = ageGenderInput.value.trim();
+        if (!submittedStory || submittedStory.story !== story || submittedStory.ageGender !== ageGender) {
+            submittedStory = { story, ageGender, theme: selectedTheme, timestamp: getFormattedTimestamp() };
+        }
+        const snapshot = submittedStory;
+        snapshot.generateTitles = generateTitlesInput.checked;
+        selectedTheme = snapshot.theme;
+        const paletteContainer = document.getElementById('themeOptions');
+        setButtonPressed(paletteContainer, paletteContainer.querySelectorAll('button')[themes.indexOf(selectedTheme)]);
+        applySlideColors();
+        const formControls = [...form.querySelectorAll('input, textarea, button'), generateTitlesInput];
+        formControls.forEach(control => { control.disabled = true; });
+        slides[0].querySelector('.story-timestamp').textContent = snapshot.timestamp;
         let uploadToken = '';
         const batchCount = createUploadBatches(slides.length);
 
         try {
+            if (snapshot.generateTitles && !snapshot.preparationAttempted) {
+                snapshot.preparationAttempted = true;
+                try {
+                    const preparation = await apiJson('prepare-submission', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ story, age_gender: ageGender }),
+                    }, 15000);
+                    if (!preparation.submissionIntent) throw new Error('AI title preparation is unavailable.');
+                    snapshot.intent = preparation.submissionIntent;
+                } catch (error) {
+                    snapshot.titleError = 'Title generation failed.';
+                }
+            }
+            if (snapshot.generateTitles && snapshot.intent) void requestTitles(snapshot);
             for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
                 const start = batchIndex * SLIDES_PER_UPLOAD;
                 const end = Math.min(start + SLIDES_PER_UPLOAD, slides.length);
                 const data = new FormData();
                 data.append('story', story);
-                data.append('age_gender', ageGenderInput.value.trim());
+                data.append('age_gender', ageGender);
                 data.append('batch_index', String(batchIndex));
                 data.append('batch_count', String(batchCount));
                 if (uploadToken) data.append('upload_token', uploadToken);
+                if (snapshot.intent) data.append('submission_intent', snapshot.intent);
 
                 for (let index = start; index < end; index++) {
                     setSubmittingMessage(`Rendering slide ${index + 1} of ${slides.length}...`);
@@ -497,29 +703,35 @@
                     data.append('images', image, `slide-${index + 1}.jpg`);
                 }
 
-                setSubmittingMessage('Cooking the backend...');
+                setSubmittingMessage('Submitting story...');
                 await new Promise(resolve => requestAnimationFrame(resolve));
-                setSubmittingMessage('Sending to admin...');
-                const response = await fetch(`${API_ROOT}/postConfession`, { method: 'POST', body: data });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Story submission failed.');
+                snapshot.uploadAttempted = true;
+                const result = await apiJson('postConfession', { method: 'POST', body: data });
+                snapshot.completedBatches = (snapshot.completedBatches || 0) + 1;
                 uploadToken = result.nextUploadToken || '';
+                if (batchIndex < batchCount - 1 && !uploadToken) throw new Error('Story submission failed.');
+                if (batchIndex === batchCount - 1) snapshot.submissionToken = result.submissionToken;
                 if (batchIndex < batchCount - 1) setSubmittingMessage('Preparing the next batch...');
             }
 
             form.hidden = true;
             submitControls.hidden = true;
             submissionSuccess.hidden = false;
+            snapshot.storySent = true;
+            if (!snapshot.submissionToken) snapshot.titleError = 'Title generation failed.';
+            syncTitleStatus(snapshot);
             submitStatus.textContent = '';
             if (typeof showToast === 'function') {
                 showToast('Posting to Instagram is subject to content and community rules.', 'success');
             }
-            if (previewObserver) previewObserver.disconnect();
         } catch (error) {
-            submitStatus.textContent = error.message || 'Could not submit your story. Please try again.';
-            submitButton.disabled = false;
+            const uncertainDelivery = !snapshot.intent && snapshot.uploadAttempted
+                && (snapshot.completedBatches || !error.httpStatus || error.httpStatus >= 500);
+            submitStatus.textContent = 'Story submission failed.';
+            submitButton.disabled = Boolean(uncertainDelivery);
             submitButton.classList.remove('btn-disabled');
             submitButton.textContent = 'Submit Story';
+            formControls.forEach(control => { control.disabled = false; });
         }
     }
 

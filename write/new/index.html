@@ -7,10 +7,32 @@
   <meta name="description" content="Write an anonymous story with a live Instagram preview.">
   <title>Latest Story Experience | Infy Stories</title>
   <script>
-    const referringPage = document.referrer ? new URL(document.referrer) : null;
-    const fromSameSite = referringPage && referringPage.origin === window.location.origin;
-    window.storyAdminEntry = Boolean(fromSameSite && referringPage.pathname === new URL('../../aboutUs.html', window.location.href).pathname);
-    window.storyEntryAllowed = Boolean(window.storyAdminEntry || (fromSameSite && referringPage.pathname === new URL('../../writeConfessionRules.html', window.location.href).pathname));
+    let entryMode = null;
+    try {
+      const entry = JSON.parse(sessionStorage.getItem('storyEditorEntry') || 'null');
+      sessionStorage.removeItem('storyEditorEntry');
+      if (entry && ['user', 'admin'].includes(entry.mode)
+          && Date.now() - entry.created >= 0 && Date.now() - entry.created <= 300000) {
+        entryMode = entry.mode;
+      }
+    } catch {}
+    if (!entryMode && document.referrer) {
+      try {
+        const source = new URL(document.referrer);
+        const path = source.pathname.replace(/\/+$/, '').toLowerCase();
+        if (source.origin === location.origin) {
+          if (/(^|\/)aboutus(?:\.html)?$/.test(path)) entryMode = 'admin';
+          if (/(^|\/)writeconfessionrules(?:\.html)?$/.test(path)) entryMode = 'user';
+        }
+      } catch {}
+    }
+    if (!entryMode && ['reload', 'back_forward'].includes(performance.getEntriesByType('navigation')[0]?.type)
+        && ['user', 'admin'].includes(history.state?.storyEntryMode)) {
+      entryMode = history.state.storyEntryMode;
+    }
+    window.storyAdminEntry = entryMode === 'admin';
+    window.storyEntryAllowed = Boolean(entryMode);
+    if (window.storyEntryAllowed) history.replaceState({ ...history.state, storyEntryMode: entryMode }, '');
     if (!window.storyEntryAllowed) window.location.replace('../../index.html');
   </script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q3SY8F9P01"></script>
@@ -82,11 +104,34 @@
           <h3>Story submitted successfully.</h3>
           <p>Your story has been received.</p>
         </section>
+
+        <section class="title-suggestions" id="titleSuggestions" hidden aria-label="AI title suggestions">
+          <h3>Suggested titles</h3>
+          <p id="titleGenerationStatus" class="submit-status" role="status"></p>
+          <button id="retryTitles" type="button" class="preview-arrow title-retry" aria-label="Retry title generation" title="Retry title generation" hidden>
+            <i class="fas fa-redo" aria-hidden="true"></i>
+          </button>
+          <form id="titleForm" hidden>
+            <fieldset class="title-options">
+              <legend>Choose a title</legend>
+              <div id="titleOptions"></div>
+            </fieldset>
+            <button id="submitTitle" type="submit" class="btn btn-primary title-action-button" disabled>
+              <i class="fas fa-paper-plane" aria-hidden="true"></i>
+              <span>Send title slide</span>
+            </button>
+          </form>
+          <p id="titleDeliveryStatus" class="submit-status" role="status"></p>
+        </section>
       </section>
 
       <section class="story-preview-panel" aria-label="Live story preview">
         <div class="preview-heading">
           <h3>Live preview</h3>
+        </div>
+        <div class="preview-tabs" id="previewTabs" role="group" aria-label="Preview view" hidden>
+          <button id="previewTitle" type="button" aria-pressed="false">Title</button>
+          <button id="previewStory" type="button" aria-pressed="true">Story</button>
         </div>
         <div class="preview-viewport" id="previewViewport">
           <div class="preview-stage" id="previewStage"></div>
@@ -103,8 +148,19 @@
       </section>
 
       <div class="story-submit-controls">
+        <label class="generate-titles-choice" for="generateTitles">
+          <input id="generateTitles" name="generate_titles" type="checkbox" form="storyForm" checked>
+          <span>Generate Titles for my story</span>
+        </label>
         <button class="btn btn-primary submit-story-button" id="submitStory" type="submit" form="storyForm">Submit Story</button>
         <p class="submit-status" id="submitStatus" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="story-home-controls" id="storyHomeControls" hidden>
+        <button type="button" class="btn btn-secondary title-action-button" onclick="location.href='../../index.html';">
+          <i class="fas fa-home" aria-hidden="true"></i>
+          <span>Home</span>
+        </button>
       </div>
     </div>
   </main>
