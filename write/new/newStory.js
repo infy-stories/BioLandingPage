@@ -56,10 +56,19 @@
     let slides = [];
     let activeSlide = 0;
     let previewObserver;
+    let adminTitleSlide;
+    let adminTitleTheme = selectedTheme;
+    let adminTitleRendering = false;
+    const adminTitleInput = document.getElementById('adminTitleText');
+    const adminTitleStage = document.getElementById('adminTitleStage');
+    const adminTitleViewport = document.getElementById('adminTitleViewport');
+    const downloadAdminTitleButton = document.getElementById('downloadAdminTitle');
+    const adminTitleStatus = document.getElementById('adminTitleStatus');
 
     if (adminEntry) {
         storyInput.value = '$ ';
         document.getElementById('adminSettings').hidden = false;
+        document.getElementById('adminTitleTool').hidden = false;
     }
 
     function setButtonPressed(container, selectedButton) {
@@ -68,15 +77,17 @@
         });
     }
 
-    function buildThemeOptions() {
-        const container = document.getElementById('themeOptions');
+    function buildThemeOptions(container = document.getElementById('themeOptions'), selected = selectedTheme, onSelect = theme => {
+        selectedTheme = theme;
+        applySlideColors();
+    }) {
         themes.forEach(theme => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'theme-option';
             button.title = `${theme.name} theme`;
             button.setAttribute('aria-label', `${theme.name} theme`);
-            button.setAttribute('aria-pressed', String(theme === selectedTheme));
+            button.setAttribute('aria-pressed', String(theme === selected));
 
             const preview = document.createElement('span');
             preview.className = 'theme-chip';
@@ -88,8 +99,7 @@
             button.append(preview);
             button.addEventListener('click', () => {
                 setButtonPressed(container, button);
-                selectedTheme = theme;
-                applySlideColors();
+                onSelect(theme);
             });
             container.appendChild(button);
         });
@@ -438,7 +448,9 @@
     async function renderJpeg(slide) {
         if (!window.html2canvas) throw new Error('Image renderer did not load. Check your connection and try again.');
         await document.fonts.ready;
-        await Promise.all(Array.from(slide.querySelectorAll('img')).filter(image => !image.hidden).map(image => image.decode()));
+        await Promise.all(Array.from(slide.querySelectorAll('img'))
+            .filter(image => !image.hidden && (!image.complete || !image.naturalWidth))
+            .map(image => image.decode()));
         const originalParent = slide.parentNode;
         const originalNextSibling = slide.nextSibling;
         measurementHost.appendChild(slide);
@@ -529,6 +541,66 @@
         accent.className = 'story-title-accent';
         body.append(heading, accent);
         return slide;
+    }
+
+    function setAdminTitleScale() {
+        adminTitleStage.style.transform = `scale(${adminTitleViewport.clientWidth / 360})`;
+    }
+
+    function updateAdminTitlePreview() {
+        if (!adminEntry) return;
+        const title = adminTitleInput.value.trim();
+        adminTitleSlide = createTitleSlide({ theme: adminTitleTheme }, title);
+        adminTitleStage.replaceChildren(adminTitleSlide);
+        downloadAdminTitleButton.disabled = !title || !adminTitleInput.validity.valid || adminTitleRendering;
+        adminTitleStatus.textContent = '';
+        setAdminTitleScale();
+    }
+
+    if (adminEntry) {
+        buildThemeOptions(document.getElementById('adminTitleThemes'), adminTitleTheme, theme => {
+            adminTitleTheme = theme;
+            updateAdminTitlePreview();
+        });
+        adminTitleInput.addEventListener('input', updateAdminTitlePreview);
+        if ('ResizeObserver' in window) {
+            new ResizeObserver(setAdminTitleScale).observe(adminTitleViewport);
+        } else {
+            window.addEventListener('resize', setAdminTitleScale);
+        }
+        document.getElementById('adminTitleForm').addEventListener('submit', async event => {
+            event.preventDefault();
+            if (adminTitleRendering || !adminTitleInput.value.trim() || !adminTitleInput.validity.valid) return;
+            adminTitleRendering = true;
+            downloadAdminTitleButton.disabled = true;
+            adminTitleStatus.textContent = 'Rendering title card...';
+            const exportSlide = adminTitleSlide.cloneNode(true);
+            const now = new Date();
+            const pad = value => String(value).padStart(2, '0');
+            const timestamp = `${pad(now.getDate())}${pad(now.getMonth() + 1)}${String(now.getFullYear()).slice(-2)}_`
+                + `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+            const filename = `title-${timestamp}.jpg`;
+            measurementHost.appendChild(exportSlide);
+            try {
+                const image = await renderJpeg(exportSlide);
+                const url = URL.createObjectURL(image);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                requestAnimationFrame(() => URL.revokeObjectURL(url));
+                adminTitleStatus.textContent = '';
+            } catch (error) {
+                adminTitleStatus.textContent = 'Title image creation failed.';
+            } finally {
+                exportSlide.remove();
+                adminTitleRendering = false;
+                downloadAdminTitleButton.disabled = !adminTitleInput.value.trim() || !adminTitleInput.validity.valid;
+            }
+        });
+        updateAdminTitlePreview();
     }
 
     function showTitlePreview() {
