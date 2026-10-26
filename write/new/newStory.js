@@ -48,7 +48,7 @@
     const titleForm = document.getElementById('titleForm');
     const retryTitles = document.getElementById('retryTitles');
     const submitTitleButton = document.getElementById('submitTitle');
-    const titleDeliveryStatus = document.getElementById('titleDeliveryStatus');
+    const skipTitleButton = document.getElementById('skipTitle');
     const previewTabs = document.getElementById('previewTabs');
     const previewNavigation = document.querySelector('.preview-navigation');
     let submittedStory;
@@ -506,20 +506,20 @@
 
     function syncTitleStatus(snapshot) {
         if (snapshot !== submittedStory) return;
-        if (!snapshot.generateTitles || snapshot.titleSent) {
+        if (!snapshot.generateTitles || snapshot.storySent || snapshot.sending) {
             titleSuggestions.hidden = true;
             return;
         }
-        if (!snapshot.storySent) return;
         titleSuggestions.hidden = false;
         titleGenerationStatus.textContent = snapshot.titlesLoading
             ? 'Generating title suggestions...'
             : snapshot.titleError || '';
         titleGenerationStatus.hidden = !titleGenerationStatus.textContent;
-        retryTitles.hidden = !snapshot.titleError || (snapshot.titleRetries || 0) >= MAX_TITLE_RETRIES;
-        retryTitles.disabled = snapshot.titlesLoading || !snapshot.submissionToken;
-        titleForm.hidden = !snapshot.titles || !snapshot.submissionToken;
-        submitTitleButton.disabled = !snapshot.submissionToken || !snapshot.selectedTitle || snapshot.titleSending || snapshot.titleSent;
+        retryTitles.hidden = !snapshot.intent || !snapshot.titleError || (snapshot.titleRetries || 0) >= MAX_TITLE_RETRIES;
+        retryTitles.disabled = snapshot.titlesLoading || !snapshot.intent;
+        titleForm.hidden = !snapshot.titles;
+        submitTitleButton.disabled = !snapshot.selectedTitle || snapshot.titlesLoading;
+        skipTitleButton.disabled = snapshot.titlesLoading;
     }
 
     function createTitleSlide(snapshot, title) {
@@ -682,39 +682,27 @@
     titleForm.addEventListener('submit', async event => {
         event.preventDefault();
         const snapshot = submittedStory;
-        if (!snapshot?.submissionToken || !snapshot.selectedTitle || snapshot.titleSending || snapshot.titleSent) return;
-        snapshot.titleSending = true;
-        titleOptions.querySelectorAll('input').forEach(input => { input.disabled = true; });
-        titleDeliveryStatus.textContent = 'Rendering title slide...';
-        syncTitleStatus(snapshot);
-        try {
-            const image = await renderJpeg(snapshot.titleSlide || createTitleSlide(snapshot, snapshot.selectedTitle));
-            const data = new FormData();
-            data.append('submission_token', snapshot.submissionToken);
-            data.append('title', snapshot.selectedTitle);
-            data.append('image', image, 'title-slide.jpg');
-            titleDeliveryStatus.textContent = 'Sending title slide...';
-            await apiJson('submit-title-image', { method: 'POST', body: data });
-            snapshot.titleSent = true;
-            titleDeliveryStatus.textContent = '';
-            submissionSuccess.hidden = true;
-            document.querySelector('.story-compose').hidden = true;
-            document.querySelector('.new-story-heading').hidden = true;
-            document.querySelector('.new-story-layout').classList.add('story-complete');
-            document.getElementById('storyHomeControls').hidden = false;
-            showTitlePreview();
-        } catch (error) {
-            titleDeliveryStatus.textContent = 'Title slide submission failed.';
-        } finally {
-            snapshot.titleSending = false;
-            titleOptions.querySelectorAll('input').forEach(input => { input.disabled = snapshot.titleSent; });
-            syncTitleStatus(snapshot);
-        }
+        if (!snapshot?.selectedTitle || snapshot.sending || snapshot.storySent || snapshot.titlesLoading) return;
+        snapshot.titleChosen = true;
+        submitButton.disabled = false;
+        await submitStory(event);
+    });
+    skipTitleButton.addEventListener('click', async event => {
+        const snapshot = submittedStory;
+        if (!snapshot || snapshot.sending || snapshot.storySent || snapshot.titlesLoading) return;
+        snapshot.selectedTitle = '';
+        snapshot.titleSlide = null;
+        snapshot.titleChosen = true;
+        previewTabs.hidden = true;
+        previewNavigation.hidden = false;
+        showSlide(activeSlide);
+        submitButton.disabled = false;
+        await submitStory(event);
     });
 
     async function submitStory(event) {
         event.preventDefault();
-        if (submitButton.disabled || submittedStory?.storySent) return;
+        if (submitButton.disabled || submittedStory?.storySent || submittedStory?.sending) return;
         const story = storyForSubmission();
         const isAdmin = story.startsWith('$');
         if (!story.replace(/^\$+/, '').trim() || (!isAdmin && Array.from(story).length > NORMAL_STORY_LIMIT)) {
@@ -740,27 +728,46 @@
         const formControls = [...form.querySelectorAll('input, textarea, button'), generateTitlesInput];
         formControls.forEach(control => { control.disabled = true; });
         slides[0].querySelector('.story-timestamp').textContent = snapshot.timestamp;
-        let uploadToken = '';
-        const batchCount = createUploadBatches(slides.length);
-
         try {
-            if (snapshot.generateTitles && !snapshot.preparationAttempted) {
-                snapshot.preparationAttempted = true;
-                try {
-                    const preparation = await apiJson('prepare-submission', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ story, age_gender: ageGender }),
-                    }, 15000);
-                    if (!preparation.submissionIntent) throw new Error('AI title preparation is unavailable.');
-                    snapshot.intent = preparation.submissionIntent;
-                } catch (error) {
-                    snapshot.titleError = 'Title generation failed.';
+            if (snapshot.generateTitles && !snapshot.titleChosen) {
+                form.hidden = true;
+                submitControls.hidden = true;
+                titleSuggestions.hidden = false;
+                titleGenerationStatus.hidden = false;
+                titleGenerationStatus.textContent = 'Preparing title suggestions...';
+                skipTitleButton.disabled = true;
+                if (!snapshot.preparationAttempted) {
+                    snapshot.preparationAttempted = true;
+                    try {
+                        const preparation = await apiJson('prepare-submission', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ story, age_gender: ageGender }),
+                        }, 15000);
+                        if (!preparation.submissionIntent) throw new Error('AI title preparation is unavailable.');
+                        snapshot.intent = preparation.submissionIntent;
+                    } catch (error) {
+                        snapshot.titleError = 'Title generation failed.';
+                    }
                 }
+                if (snapshot.intent) await requestTitles(snapshot);
+                syncTitleStatus(snapshot);
+                submitButton.disabled = false;
+                return;
             }
-            if (snapshot.generateTitles && snapshot.intent) void requestTitles(snapshot);
+            snapshot.sending = true;
+            syncTitleStatus(snapshot);
+            submitControls.hidden = false;
+            if (!snapshot.uploadSlides) {
+                snapshot.uploadSlides = snapshot.selectedTitle
+                    ? [snapshot.titleSlide || createTitleSlide(snapshot, snapshot.selectedTitle), ...slides]
+                    : [...slides];
+            }
+            const uploadSlides = snapshot.uploadSlides;
+            const batchCount = createUploadBatches(uploadSlides.length);
+            let uploadToken = '';
             for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
                 const start = batchIndex * SLIDES_PER_UPLOAD;
-                const end = Math.min(start + SLIDES_PER_UPLOAD, slides.length);
+                const end = Math.min(start + SLIDES_PER_UPLOAD, uploadSlides.length);
                 const data = new FormData();
                 data.append('story', story);
                 data.append('age_gender', ageGender);
@@ -770,9 +777,11 @@
                 if (snapshot.intent) data.append('submission_intent', snapshot.intent);
 
                 for (let index = start; index < end; index++) {
-                    setSubmittingMessage(`Rendering slide ${index + 1} of ${slides.length}...`);
-                    const image = await renderJpeg(slides[index]);
-                    data.append('images', image, `slide-${index + 1}.jpg`);
+                    setSubmittingMessage(`Rendering image ${index + 1} of ${uploadSlides.length}...`);
+                    const image = await renderJpeg(uploadSlides[index]);
+                    const filename = snapshot.selectedTitle && index === 0
+                        ? 'title-slide.jpg' : `slide-${index + 1 - (snapshot.selectedTitle ? 1 : 0)}.jpg`;
+                    data.append('images', image, filename);
                 }
 
                 setSubmittingMessage('Submitting story...');
@@ -790,19 +799,23 @@
             submitControls.hidden = true;
             submissionSuccess.hidden = false;
             snapshot.storySent = true;
-            if (!snapshot.submissionToken) snapshot.titleError = 'Title generation failed.';
+            snapshot.sending = false;
             syncTitleStatus(snapshot);
+            document.getElementById('storyHomeControls').hidden = false;
             submitStatus.textContent = '';
             if (typeof showToast === 'function') {
                 showToast('Posting to Instagram is subject to content and community rules.', 'success');
             }
         } catch (error) {
+            snapshot.sending = false;
             const uncertainDelivery = !snapshot.intent && snapshot.uploadAttempted
                 && (snapshot.completedBatches || !error.httpStatus || error.httpStatus >= 500);
             submitStatus.textContent = 'Story submission failed.';
             submitButton.disabled = Boolean(uncertainDelivery);
             submitButton.classList.remove('btn-disabled');
             submitButton.textContent = 'Submit Story';
+            form.hidden = false;
+            submitControls.hidden = false;
             formControls.forEach(control => { control.disabled = false; });
         }
     }
