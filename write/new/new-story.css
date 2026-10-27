@@ -224,14 +224,43 @@
 }
 
 .title-suggestions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
   padding-top: 1rem;
   border-top: 1px solid var(--glass-border);
+}
+
+.title-suggestions > h3 {
+  margin: 0;
+}
+
+#titleForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.title-suggestions .title-action-button,
+.story-home-controls .title-action-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .title-suggestions[hidden],
 .title-suggestions .submit-status[hidden],
 .title-suggestions button[hidden],
 .title-suggestions form[hidden],
+#titleForm[hidden],
 .story-compose[hidden],
 .new-story-heading[hidden],
 .story-home-controls[hidden],
@@ -267,6 +296,7 @@
 }
 
 .story-home-controls {
+  grid-column: 1 / -1;
   text-align: center;
 }
 
@@ -306,7 +336,7 @@
 
 .title-options {
   min-width: 0;
-  margin: 1rem 0;
+  margin: 0.25rem 0 0;
   padding: 0;
   border: 0;
 }

@@ -1122,6 +1122,47 @@ input[type="checkbox"]+label {
   to { opacity: 1; }
 }
 
+.submission-cooldown {
+  position: fixed;
+  inset: 0;
+  width: min(360px, calc(100% - 2rem));
+  margin: auto;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.submission-cooldown::backdrop {
+  background: rgba(0, 0, 0, 0.68);
+}
+
+.submission-cooldown .cooldown-icon {
+  margin-bottom: 0.85rem;
+  color: var(--accent);
+  font-size: 1.75rem;
+}
+
+.submission-cooldown h2 {
+  padding: 0;
+}
+
+.cooldown-timer {
+  display: block;
+  margin: 0 0 1.25rem;
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.cooldown-home {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+}
+
 /* Toast Notification — positioned via JS to stay in the visible viewport */
 .toast {
   position: fixed;
