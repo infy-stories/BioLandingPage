@@ -118,16 +118,19 @@
             </fieldset>
             <button id="submitTitle" type="submit" class="btn btn-primary title-action-button" disabled>
               <i class="fas fa-paper-plane" aria-hidden="true"></i>
-              <span>Send title slide</span>
+              <span>Submit story with title</span>
             </button>
           </form>
-          <p id="titleDeliveryStatus" class="submit-status" role="status"></p>
+          <button id="skipTitle" type="button" class="btn btn-secondary title-action-button">Submit without title</button>
         </section>
       </section>
 
       <section class="story-preview-panel" aria-label="Live story preview">
         <div class="preview-heading">
           <h3>Live preview</h3>
+                        <button class="preview-arrow" id="randomPaletteOne" type="button" aria-label="Random palette" title="Random palette">
+                <i class="fas fa-random" aria-hidden="true"></i>
+              </button>
         </div>
         <div class="preview-tabs" id="previewTabs" role="group" aria-label="Preview view" hidden>
           <button id="previewTitle" type="button" aria-pressed="false">Title</button>

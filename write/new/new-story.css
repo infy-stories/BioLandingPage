@@ -172,6 +172,46 @@
   outline-offset: 3px;
 }
 
+.special-theme-option {
+  grid-column: 1 / -1;
+  border-color: var(--special-accent);
+}
+
+.special-theme-option[aria-pressed="true"] {
+  border-color: var(--special-accent);
+  box-shadow: 0 0 0 2px var(--special-accent);
+}
+
+.theme-chip.special-theme-chip {
+  display: flex;
+  min-height: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-color: var(--special-accent);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.story-compose .special-theme-label,
+.special-theme-label {
+  color: inherit;
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.story-compose .special-theme-mark,
+.special-theme-mark {
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
 .submit-story-button {
   width: 100%;
 }
@@ -224,14 +264,43 @@
 }
 
 .title-suggestions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
   padding-top: 1rem;
   border-top: 1px solid var(--glass-border);
+}
+
+.title-suggestions > h3 {
+  margin: 0;
+}
+
+#titleForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.title-suggestions .title-action-button,
+.story-home-controls .title-action-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .title-suggestions[hidden],
 .title-suggestions .submit-status[hidden],
 .title-suggestions button[hidden],
 .title-suggestions form[hidden],
+#titleForm[hidden],
 .story-compose[hidden],
 .new-story-heading[hidden],
 .story-home-controls[hidden],
@@ -267,6 +336,7 @@
 }
 
 .story-home-controls {
+  grid-column: 1 / -1;
   text-align: center;
 }
 
@@ -306,7 +376,7 @@
 
 .title-options {
   min-width: 0;
-  margin: 1rem 0;
+  margin: 0.25rem 0 0;
   padding: 0;
   border: 0;
 }

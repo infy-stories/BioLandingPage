@@ -1,0 +1,48 @@
+{
+  "themes": [
+    {
+      "id": "diwali-2026",
+      "name": "Diwali",
+      "emoji": "\ud83e\ude94",
+      "from": "2026-10-27T00:00:00+05:30",
+      "to": "2026-11-12T23:59:59+05:30",
+      "background": "#181C1B",
+      "text": "#FFF7E5",
+      "accent": "#E7BB62",
+      "decoration": "diwali"
+    },
+    {
+      "id": "christmas-2026",
+      "name": "Christmas",
+      "emoji": "\ud83c\udf84",
+      "from": "2026-12-18T00:00:00+05:30",
+      "to": "2026-12-27T23:59:59.999+05:30",
+      "background": "#3B1722",
+      "text": "#FFF6ED",
+      "accent": "#AAC9AD",
+      "decoration": "christmas"
+    },
+    {
+      "id": "new-year-2027",
+      "name": "New Year",
+      "emoji": "\u2728",
+      "from": "2026-12-28T00:00:00+05:30",
+      "to": "2027-01-05T23:59:59.999+05:30",
+      "background": "#111A20",
+      "text": "#FFF7E9",
+      "accent": "#E9C679",
+      "decoration": "new-year"
+    },
+    {
+      "id": "sankranthi-2027",
+      "name": "Sankranthi",
+      "emoji": "\ud83e\ude81",
+      "from": "2027-01-10T00:00:00+05:30",
+      "to": "2027-01-17T23:59:59.999+05:30",
+      "background": "#EAF6F3",
+      "text": "#183B3A",
+      "accent": "#B35D21",
+      "decoration": "sankranthi"
+    }
+  ]
+}

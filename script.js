@@ -1,6 +1,94 @@
 var host = "https://jarvis-ihcp.vercel.app"
 
 const maxChars = 2000;
+const SUBMISSION_COOLDOWN_MS = 5 * 60 * 1000;
+const SUBMISSION_HOME_URL = new URL('index.html', document.currentScript?.src || location.href).href;
+
+function getSubmissionCooldownRemaining(kind) {
+    try {
+        const lastSubmitted = Number(localStorage.getItem(`infy:lastSubmitted:${kind}`));
+        const now = Date.now();
+        if (!Number.isFinite(lastSubmitted) || lastSubmitted <= 0 || lastSubmitted > now) return 0;
+        return Math.max(0, lastSubmitted + SUBMISSION_COOLDOWN_MS - now);
+    } catch {
+        return 0;
+    }
+}
+
+function checkSubmissionCooldown(kind) {
+    const remaining = getSubmissionCooldownRemaining(kind);
+    if (!remaining) return true;
+    showSubmissionCooldown(kind);
+    return false;
+}
+
+function showSubmissionCooldown(kind) {
+    if (document.getElementById('submissionCooldown')) return;
+    const dialog = document.createElement('dialog');
+    dialog.id = 'submissionCooldown';
+    dialog.className = 'confirmation-modal submission-cooldown';
+    dialog.setAttribute('aria-labelledby', 'submissionCooldownTitle');
+    dialog.setAttribute('aria-describedby', 'submissionCooldownMessage');
+    dialog.innerHTML = '<i class="fas fa-hourglass-half cooldown-icon" aria-hidden="true"></i>'
+        + '<h2 id="submissionCooldownTitle"></h2>'
+        + '<p id="submissionCooldownMessage"></p>'
+        + '<output class="cooldown-timer" role="timer" aria-live="off"></output>'
+        + '<button type="button" class="btn btn-primary cooldown-home">'
+        + '<i class="fas fa-home" aria-hidden="true"></i><span>Go Home</span></button>';
+    dialog.querySelector('h2').textContent = `${kind === 'story' ? 'Story' : 'Query'} cooldown`;
+    dialog.querySelector('p').textContent = `You recently submitted a ${kind}. You can write another ${kind} when the timer ends.`;
+    const timer = dialog.querySelector('output');
+    function updateTimer() {
+        const remaining = getSubmissionCooldownRemaining(kind);
+        if (!remaining) {
+            dialog.close();
+            cleanup();
+            return;
+        }
+        const seconds = Math.ceil(remaining / 1000);
+        timer.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+        timer.setAttribute('aria-label', `${seconds} seconds remaining`);
+    }
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.appendChild(dialog);
+    dialog.addEventListener('cancel', event => event.preventDefault());
+    dialog.querySelector('button').addEventListener('click', () => {
+        window.location.href = SUBMISSION_HOME_URL;
+    });
+    dialog.showModal();
+    const interval = setInterval(updateTimer, 1000);
+    function cleanup() {
+        clearInterval(interval);
+        if (!dialog.isConnected) return;
+        document.body.style.overflow = previousOverflow;
+        dialog.remove();
+        if (previousFocus?.isConnected) previousFocus.focus();
+    }
+    dialog.addEventListener('close', cleanup, { once: true });
+    updateTimer();
+}
+
+function enforceSubmissionEntryCooldown() {
+    const kind = document.getElementById('storyForm') || document.getElementById('pc_button')
+        ? 'story' : document.getElementById('pq_button') ? 'query' : null;
+    if (!kind || window.storyAdminEntry
+            || document.getElementById('message')?.value.trim().startsWith('$')) return;
+    if (document.referrer) {
+        const source = new URL(document.referrer);
+        if (source.origin === location.origin && /\/aboutus(?:\.html)?\/?$/i.test(source.pathname)) return;
+    }
+    if (getSubmissionCooldownRemaining(kind)) showSubmissionCooldown(kind);
+}
+
+function markSubmissionSuccessful(kind) {
+    try {
+        localStorage.setItem(`infy:lastSubmitted:${kind}`, String(Date.now()));
+    } catch {
+        console.warn('Submission cooldown could not be saved in browser storage.');
+    }
+}
 
 // Update character count on every key press
 function checkLength() {
@@ -59,6 +147,8 @@ function showToast(message, type = 'success', targetEl = null) {
 }
 
 function postQuery() {
+    const isAdmin = document.getElementById("message").value.startsWith('$');
+    if (!isAdmin && !checkSubmissionCooldown('query')) return;
     if (document.getElementById("message").value == "") {
         showToast("Please enter your query", "error", document.getElementById("message"));
     } else {
@@ -81,8 +171,13 @@ function postQuery() {
         };
 
         fetch(host + "/postQuery", requestOptions)
-            .then(response => response.text())
+            .then(async response => {
+                const result = await response.text();
+                if (!response.ok) throw new Error(result || 'Query submission failed');
+                return result;
+            })
             .then(result => {
+                if (!isAdmin) markSubmissionSuccessful('query');
                 showToast(result, 'success');
                 setTimeout(() => {
                     window.open("https://t.me/infy_queries", "_self");
@@ -100,6 +195,8 @@ function postQuery() {
 
 
 function postConfession() {
+    const isAdmin = document.getElementById("message").value.trim().startsWith('$');
+    if (!isAdmin && !checkSubmissionCooldown('story')) return;
     if (document.getElementById("message").value == "") {
         showToast("Please enter your Story", "error", document.getElementById("message"));
     } else {
@@ -130,8 +227,13 @@ function postConfession() {
         };
 
         fetch(host + "/postConfession", requestOptions)
-            .then(response => response.text())
+            .then(async response => {
+                const result = await response.text();
+                if (!response.ok) throw new Error(result || 'Story submission failed');
+                return result;
+            })
             .then(result => {
+                if (!isAdmin) markSubmissionSuccessful('story');
                 showToast(result, 'success');
                 setTimeout(() => {
                     window.open("index.html", "_self");
@@ -149,6 +251,7 @@ function postConfession() {
 
 
 function writeQuery() {
+    if (!checkSubmissionCooldown('query')) return;
     showConfirmationModal("Make sure you are writing the query in detail", {
         confirmText: "Continue",
         cancelText: "Cancel",
@@ -245,6 +348,7 @@ function showConfirmationModal(message, options = {}) {
 }
 
 function writeConfession() {
+    if (!checkSubmissionCooldown('story')) return;
     // Add loading visuals
     const storyBtn = document.getElementById("story");
     if (storyBtn) {
@@ -270,7 +374,7 @@ function writeConfession() {
                     if (confirmed === true) {
                         openStoryRules();
                     } else if (confirmed === false) {
-                        window.open("writeQuery.html", "_self");
+                        if (checkSubmissionCooldown('query')) window.open("writeQuery.html", "_self");
                     } else {
                         window.location.href = 'index.html';
                     }
@@ -306,6 +410,7 @@ function openAdminStory() {
 }
 
 function chooseLatestExperience() {
+    if (!checkSubmissionCooldown('story')) return;
     showConfirmationModal("Make sure you are submitting only the story and not a query.", {
         confirmText: "Continue to story",
         cancelText: "Write a query",
@@ -313,7 +418,7 @@ function chooseLatestExperience() {
         if (confirmed === true) {
             openStoryRules();
         } else if (confirmed === false) {
-            window.location.href = 'writeQuery.html';
+            if (checkSubmissionCooldown('query')) window.location.href = 'writeQuery.html';
         } else {
             window.location.href = 'index.html';
         }
@@ -359,6 +464,11 @@ function toggleTheme() {
    THEME TOGGLE
    ═══════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
+    enforceSubmissionEntryCooldown();
+    window.addEventListener('storage', event => {
+        if (!event.key || event.key.startsWith('infy:lastSubmitted:')) enforceSubmissionEntryCooldown();
+    });
+    window.addEventListener('focus', enforceSubmissionEntryCooldown);
     // Set correct theme icon on load
     const theme = document.documentElement.getAttribute('data-theme') || 'dark'; // dark is default
     document.querySelectorAll('.theme-toggle').forEach(btn => {

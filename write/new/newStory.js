@@ -24,6 +24,7 @@
         { name: 'Peach', emoji: '\uD83C\uDF51', background: '#F9E4D5', text: LIGHT_THEME_TEXT, accent: '#D56738' },
         { name: 'Lavender Mist', emoji: '\uD83E\uDEBB', background: '#ECE7F5', text: LIGHT_THEME_TEXT, accent: '#7561B5' },
     ];
+    const standardThemes = [...themes];
     const backgroundCache = new Map();
 
     const form = document.getElementById('storyForm');
@@ -42,13 +43,14 @@
     const submissionSuccess = document.getElementById('submissionSuccess');
     const generateTitlesInput = document.getElementById('generateTitles');
     const MAX_TITLE_RETRIES = 1;
+    const TITLE_TRANSITION_DELAY_MS = 1500;
     const titleSuggestions = document.getElementById('titleSuggestions');
     const titleGenerationStatus = document.getElementById('titleGenerationStatus');
     const titleOptions = document.getElementById('titleOptions');
     const titleForm = document.getElementById('titleForm');
     const retryTitles = document.getElementById('retryTitles');
     const submitTitleButton = document.getElementById('submitTitle');
-    const titleDeliveryStatus = document.getElementById('titleDeliveryStatus');
+    const skipTitleButton = document.getElementById('skipTitle');
     const previewTabs = document.getElementById('previewTabs');
     const previewNavigation = document.querySelector('.preview-navigation');
     let submittedStory;
@@ -81,10 +83,14 @@
         selectedTheme = theme;
         applySlideColors();
     }) {
-        themes.forEach(theme => {
+        container.replaceChildren();
+        const orderedThemes = [...themes.filter(theme => theme.special), ...themes.filter(theme => !theme.special)];
+        orderedThemes.forEach(theme => {
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = 'theme-option';
+            button.className = theme.special ? 'theme-option special-theme-option' : 'theme-option';
+            button.dataset.themeName = theme.name;
+            button.disabled = container.id === 'themeOptions' && (submitButton.disabled || form.hidden);
             button.title = `${theme.name} theme`;
             button.setAttribute('aria-label', `${theme.name} theme`);
             button.setAttribute('aria-pressed', String(theme === selected));
@@ -96,6 +102,18 @@
             preview.style.borderBottom = `4px solid ${theme.accent}`;
             preview.textContent = theme.emoji;
             preview.setAttribute('aria-hidden', 'true');
+            if (theme.special) {
+                button.style.setProperty('--special-accent', theme.accent);
+                preview.classList.add('special-theme-chip');
+                preview.style.backgroundImage = `url(${drawBackground(theme)})`;
+                const mark = document.createElement('span');
+                mark.className = 'special-theme-mark';
+                mark.textContent = theme.emoji;
+                const label = document.createElement('span');
+                label.className = 'special-theme-label';
+                label.textContent = theme.name;
+                preview.replaceChildren(mark, label);
+            }
             button.append(preview);
             button.addEventListener('click', () => {
                 setButtonPressed(container, button);
@@ -103,6 +121,61 @@
             });
             container.appendChild(button);
         });
+    }
+
+    function syncPaletteSelection() {
+        const container = document.getElementById('themeOptions');
+        const selected = [...container.querySelectorAll('button')].find(button => button.dataset.themeName === selectedTheme.name);
+        setButtonPressed(container, selected);
+    }
+
+    async function loadSpecialThemes() {
+        try {
+            const response = await fetch('../../special_themes/themes.json', { cache: 'no-cache' });
+            if (!response.ok) throw new Error('Special theme registry is unavailable');
+            const registry = await response.json();
+            const names = new Set(standardThemes.map(theme => theme.name));
+            const schedules = [];
+            for (const entry of Array.isArray(registry.themes) ? registry.themes : []) {
+                const from = Date.parse(entry?.from);
+                const to = Date.parse(entry?.to);
+                if (!entry || typeof entry.name !== 'string' || !entry.name.trim() || entry.name.length > 32
+                        || names.has(entry.name) || typeof entry.emoji !== 'string'
+                        || ![entry.background, entry.text, entry.accent].every(color => /^#[0-9a-f]{6}$/i.test(color))
+                        || !Number.isFinite(from) || !Number.isFinite(to) || to < from) continue;
+                names.add(entry.name);
+                schedules.push({ from, to, theme: {
+                    name: entry.name, emoji: entry.emoji, background: entry.background,
+                    text: entry.text, accent: entry.accent, decoration: entry.decoration, special: true,
+                } });
+            }
+            let refreshTimer;
+            function refresh() {
+                clearTimeout(refreshTimer);
+                const now = Date.now();
+                const active = schedules.filter(schedule => schedule.from <= now && now <= schedule.to);
+                themes.splice(0, themes.length, ...standardThemes, ...active.map(schedule => schedule.theme));
+                if (!themes.includes(selectedTheme)) {
+                    selectedTheme = standardThemes[0];
+                    if (!submittedStory) applySlideColors();
+                }
+                buildThemeOptions();
+                if (adminEntry) {
+                    if (!themes.includes(adminTitleTheme)) adminTitleTheme = standardThemes[0];
+                    buildThemeOptions(document.getElementById('adminTitleThemes'), adminTitleTheme, theme => {
+                        adminTitleTheme = theme;
+                        updateAdminTitlePreview();
+                    });
+                    updateAdminTitlePreview();
+                }
+                const next = Math.min(...schedules.flatMap(schedule => [schedule.from, schedule.to + 1]).filter(date => date > now));
+                if (Number.isFinite(next)) refreshTimer = setTimeout(refresh, Math.min(next - now, 2147483647));
+            }
+            refresh();
+            window.addEventListener('focus', refresh);
+        } catch (error) {
+            console.warn('Special themes could not be loaded.', error);
+        }
     }
 
     function applySlideColors() {
@@ -134,6 +207,19 @@
             context.globalAlpha = opacity;
             context.fill(new Path2D(path));
         };
+        const colorFill = (path, color, opacity = 1) => {
+            context.save();
+            context.fillStyle = color;
+            fill(path, opacity);
+            context.restore();
+        };
+        const colorStroke = (path, color, opacity = 0.8, width = 0.8) => {
+            context.save();
+            context.strokeStyle = color;
+            context.lineWidth = width;
+            stroke(path, opacity);
+            context.restore();
+        };
         const sprig = (x, y, rotation, scale, filled = false) => {
             context.save();
             context.translate(x, y);
@@ -154,7 +240,106 @@
             context.restore();
         };
 
-        switch (theme.name) {
+        switch (theme.decoration || theme.name) {
+        case 'christmas':
+            for (let branch = 0; branch < 25; branch++) {
+                const branchX = branch * 15;
+                colorFill(`M ${branchX - 10} 0 L ${branchX + 8} 0 L ${branchX + 3} 12 L ${branchX} 7 L ${branchX - 6} 18 Z`, branch % 2 ? '#47876A' : '#27614D', 0.95);
+                colorStroke(`M ${branchX - 2} 0 L ${branchX - 3} 12`, '#AAC9AD', 0.6);
+            }
+            colorStroke('M 0 12 Q 90 23 180 12 T 360 12', '#EAC87F', 0.85);
+            [30, 78, 126, 174, 222, 270, 318].forEach((lightX, index) => {
+                const lightY = 12 + Math.sin(lightX / 57) * 5;
+                colorFill(`M ${lightX - 2} ${lightY} a 2.5 3 0 1 0 5 0 a 2.5 3 0 1 0 -5 0`, index % 2 ? '#E6B75E' : '#F6E8C4');
+            });
+            [[257, 34, 10, '#D76A65'], [291, 46, 9, '#DDB96A']].forEach(([x, y, radius, color]) => {
+                colorStroke(`M ${x} 12 L ${x} ${y - radius}`, '#DDB96A', 0.8);
+                colorFill(`M ${x - radius} ${y} a ${radius} ${radius} 0 1 0 ${radius * 2} 0 a ${radius} ${radius} 0 1 0 ${-radius * 2} 0`, color);
+                colorStroke(`M ${x - radius + 3} ${y - 2} Q ${x} ${y + 3} ${x + radius - 3} ${y - 2}`, '#FFF0D1', 0.8);
+                colorFill(`M ${x - 4} ${y - radius - 2} h 8 v 4 h -8 Z`, '#EAD29A');
+            });
+            colorFill('M 330 20 L 316 38 L 322 38 L 310 51 L 318 51 L 306 64 L 354 64 L 342 51 L 350 51 L 338 38 L 344 38 Z', '#43866B');
+            colorFill('M 330 20 L 330 64 L 354 64 L 342 51 L 350 51 L 338 38 L 344 38 Z', '#285C49');
+            colorFill('M 330 12 L 332 18 L 339 18 L 334 22 L 336 29 L 330 25 L 324 29 L 326 22 L 321 18 L 328 18 Z', '#F3CF7A');
+            colorStroke('M 321 37 Q 331 43 340 37 M 316 49 Q 330 56 346 49 M 312 59 Q 330 65 349 59', '#E8C783', 0.9);
+            colorFill('M 327 64 h 6 v 7 h -6 Z', '#BC8451');
+            colorFill('M 7 423 h 16 v 19 h -16 Z M 338 413 h 15 v 18 h -15 Z', '#D76865');
+            colorFill('M 5 419 h 20 v 5 h -20 Z M 336 409 h 19 v 5 h -19 Z', '#E69B79');
+            colorStroke('M 15 419 V 442 M 7 433 H 23 M 345 409 V 431 M 338 422 H 353', '#F5D99A', 1, 1.8);
+            colorStroke('M 15 420 C 3 414 10 408 15 418 C 19 407 27 413 15 420', '#F5D99A', 0.9);
+            colorStroke('M 349 84 L 349 148 M 9 336 L 9 392', '#DDB96A', 0.35);
+            colorFill('M 0 474 Q 80 466 150 476 T 360 474 L 360 480 L 0 480 Z', '#346D54', 0.75);
+            break;
+        case 'new-year':
+            [[320, 31, 31, '#F1CF82'], [267, 13, 19, '#78C9C4'], [13, 424, 12, '#EF9B8C']].forEach(([centerX, centerY, radius, color]) => {
+                for (let ray = 0; ray < 16; ray++) {
+                    const angle = ray * Math.PI / 8;
+                    const innerX = centerX + Math.cos(angle) * radius * 0.28;
+                    const innerY = centerY + Math.sin(angle) * radius * 0.28;
+                    const outerX = centerX + Math.cos(angle) * radius;
+                    const outerY = centerY + Math.sin(angle) * radius;
+                    colorStroke(`M ${innerX} ${innerY} Q ${outerX} ${innerY} ${outerX} ${outerY}`, color, 0.85, ray % 2 ? 0.8 : 1.3);
+                    colorFill(`M ${outerX - 1} ${outerY} a 1.2 1.2 0 1 0 2.4 0 a 1.2 1.2 0 1 0 -2.4 0`, color, 0.9);
+                }
+                colorFill(`M ${centerX} ${centerY - 4} L ${centerX + 3} ${centerY} L ${centerX} ${centerY + 4} L ${centerX - 3} ${centerY} Z`, '#FFF5D6');
+            });
+            [18, 53, 91, 131, 175, 215].forEach((x, index) => {
+                const color = ['#F1CF82', '#78C9C4', '#EF9B8C'][index % 3];
+                colorStroke(`M ${x} 6 l 4 5 M ${x + 12} 12 l -2 4`, color, 0.8, 1.6);
+            });
+            [[350, 91], [9, 183], [351, 254], [11, 354], [350, 393]].forEach(([x, y], index) => {
+                const color = index % 2 ? '#78C9C4' : '#F1CF82';
+                colorStroke(`M ${x - 3} ${y} H ${x + 3} M ${x} ${y - 3} V ${y + 3}`, color, 0.7, 1);
+                colorStroke(`M ${x} ${y + 15} q -6 5 0 10 q 6 5 0 10`, '#EF9B8C', 0.55);
+            });
+            colorStroke('M 4 472 Q 93 465 178 474 T 356 472 M 5 476 Q 90 470 175 478 T 355 476', '#F1CF82', 0.55);
+            break;
+        case 'sankranthi':
+            colorStroke('M 0 6 Q 180 20 360 6', '#A95E28', 0.75);
+            for (let leaf = 0; leaf < 17; leaf++) {
+                const leafX = 9 + leaf * 22;
+                const leafY = 7 + Math.sin(leafX * Math.PI / 360) * 6;
+                colorFill(`M ${leafX} ${leafY} Q ${leafX - 7} ${leafY + 8} ${leafX} ${leafY + 16} Q ${leafX + 7} ${leafY + 8} ${leafX} ${leafY}`, leaf % 2 ? '#509D64' : '#2A7B58');
+                colorStroke(`M ${leafX} ${leafY + 2} v 10`, '#D9E5A1', 0.7, 0.6);
+                colorFill(`M ${leafX + 9} ${leafY + 2} a 3 3 0 1 0 6 0 a 3 3 0 1 0 -6 0`, '#E9A43D');
+            }
+            [[326, 38, 19, '#DA6651', '#F5BC4D'], [266, 30, 13, '#268D91', '#86CDB6']].forEach(([x, y, size, color, alternate]) => {
+                colorFill(`M ${x} ${y - size} L ${x + size} ${y} L ${x} ${y + size} L ${x - size} ${y} Z`, color);
+                colorFill(`M ${x} ${y - size} L ${x + size} ${y} L ${x} ${y + size} Z`, alternate);
+                colorStroke(`M ${x} ${y - size} V ${y + size} M ${x - size} ${y} Q ${x} ${y - 6} ${x + size} ${y}`, '#FFF4D8', 0.9);
+                colorStroke(`M ${x} ${y + size} Q ${x + 22} ${y + size + 8} 347 ${y + size + 32} Q 335 ${y + size + 48} 351 ${y + size + 62}`, '#A45D3D', 0.7);
+                colorFill(`M ${x + 7} ${y + size + 4} l 8 -3 l -2 9 Z`, '#D66B65', 0.9);
+            });
+            colorStroke('M 350 341 Q 340 389 350 445 M 12 383 Q 18 405 12 424', '#4D8B5C', 0.9, 2);
+            [354, 374, 394, 414].forEach(y => {
+                colorStroke(`M 345 ${y} L 353 ${y - 1}`, '#967337', 0.9, 1.2);
+                colorFill(`M 347 ${y + 5} Q 330 ${y - 11} 338 ${y - 22} Q 348 ${y - 10} 347 ${y + 5} Z`, '#79AA61', 0.8);
+            });
+            colorFill('M 6 425 Q 3 433 8 442 L 21 442 Q 26 433 22 425 Z', '#BF6346');
+            colorFill('M 5 423 Q 14 418 24 423 L 23 427 L 5 427 Z', '#E6AA65');
+            colorStroke('M 7 433 Q 15 438 22 433', '#FFF1CE', 0.95, 1.5);
+            [[25, '#DD8D43'], [18, '#C8646C'], [10, '#40958B']].forEach(([radius, color]) => {
+                colorStroke(`M -3 ${480 - radius} A ${radius} ${radius} 0 0 1 ${radius - 3} 480`, color, 0.9, 2);
+            });
+            colorStroke('M 0 477 L 360 477', '#DDA84C', 0.6, 2);
+            break;
+        case 'diwali':
+            [[329, 39, 0.85], [18, 431, 0.6]].forEach(([x, y, scale]) => {
+                context.save();
+                context.translate(x, y);
+                context.scale(scale, scale);
+                fill('M -17 0 Q 0 20 17 0 Z', 0.18);
+                stroke('M -17 0 Q 0 20 17 0 M -18 0 Q 0 -5 18 0', 0.85);
+                fill('M 0 -5 C -9 -12 1 -19 1 -26 C 12 -16 8 -8 0 -5 Z', 0.8);
+                stroke('M -9 5 Q 0 10 9 5', 0.45);
+                context.restore();
+            });
+            stroke('M 250 8 Q 300 24 350 8 M 350 72 L 350 117 M 10 358 L 10 405', 0.3);
+            [[265, 13], [290, 18], [315, 18], [340, 13]].forEach(([x, y]) => {
+                fill(`M ${x} ${y} Q ${x - 3} ${y + 6} ${x} ${y + 9} Q ${x + 3} ${y + 6} ${x} ${y}`, 0.6);
+            });
+            stroke('M 347 134 L 353 134 M 350 131 L 350 137 M 10 342 L 16 342 M 13 339 L 13 345', 0.4);
+            break;
         case 'Midnight':
             [[360, 0, 0], [0, 480, Math.PI]].forEach(([x, y, rotation]) => {
                 context.save();
@@ -266,11 +451,15 @@
     document.getElementById('randomPalette').addEventListener('click', () => {
         const alternatives = themes.filter(theme => theme !== selectedTheme);
         selectedTheme = alternatives[Math.floor(Math.random() * alternatives.length)];
-        const container = document.getElementById('themeOptions');
-        setButtonPressed(container, container.querySelectorAll('button')[themes.indexOf(selectedTheme)]);
+        syncPaletteSelection();
         applySlideColors();
     });
-
+    document.getElementById('randomPaletteOne').addEventListener('click', () => {
+        const alternatives = themes.filter(theme => theme !== selectedTheme);
+        selectedTheme = alternatives[Math.floor(Math.random() * alternatives.length)];
+        syncPaletteSelection();
+        applySlideColors();
+    });
     function createSlide(index) {
         const slide = document.createElement('article');
         slide.className = 'story-slide';
@@ -506,20 +695,21 @@
 
     function syncTitleStatus(snapshot) {
         if (snapshot !== submittedStory) return;
-        if (!snapshot.generateTitles || snapshot.titleSent) {
+        if (!snapshot.generateTitles || snapshot.storySent || snapshot.sending || snapshot.preparingTitles) {
             titleSuggestions.hidden = true;
             return;
         }
-        if (!snapshot.storySent) return;
         titleSuggestions.hidden = false;
-        titleGenerationStatus.textContent = snapshot.titlesLoading
-            ? 'Generating title suggestions...'
-            : snapshot.titleError || '';
+        const loading = snapshot.preparationPending || snapshot.titlesLoading;
+        titleGenerationStatus.textContent = snapshot.preparationPending
+            ? 'Preparing title suggestions...'
+            : snapshot.titlesLoading ? 'Generating title suggestions...' : snapshot.titleError || '';
         titleGenerationStatus.hidden = !titleGenerationStatus.textContent;
-        retryTitles.hidden = !snapshot.titleError || (snapshot.titleRetries || 0) >= MAX_TITLE_RETRIES;
-        retryTitles.disabled = snapshot.titlesLoading || !snapshot.submissionToken;
-        titleForm.hidden = !snapshot.titles || !snapshot.submissionToken;
-        submitTitleButton.disabled = !snapshot.submissionToken || !snapshot.selectedTitle || snapshot.titleSending || snapshot.titleSent;
+        retryTitles.hidden = !snapshot.intent || !snapshot.titleError || (snapshot.titleRetries || 0) >= MAX_TITLE_RETRIES;
+        retryTitles.disabled = loading || !snapshot.intent;
+        titleForm.hidden = !snapshot.titles;
+        submitTitleButton.disabled = !snapshot.selectedTitle || loading;
+        skipTitleButton.disabled = loading;
     }
 
     function createTitleSlide(snapshot, title) {
@@ -682,41 +872,30 @@
     titleForm.addEventListener('submit', async event => {
         event.preventDefault();
         const snapshot = submittedStory;
-        if (!snapshot?.submissionToken || !snapshot.selectedTitle || snapshot.titleSending || snapshot.titleSent) return;
-        snapshot.titleSending = true;
-        titleOptions.querySelectorAll('input').forEach(input => { input.disabled = true; });
-        titleDeliveryStatus.textContent = 'Rendering title slide...';
-        syncTitleStatus(snapshot);
-        try {
-            const image = await renderJpeg(snapshot.titleSlide || createTitleSlide(snapshot, snapshot.selectedTitle));
-            const data = new FormData();
-            data.append('submission_token', snapshot.submissionToken);
-            data.append('title', snapshot.selectedTitle);
-            data.append('image', image, 'title-slide.jpg');
-            titleDeliveryStatus.textContent = 'Sending title slide...';
-            await apiJson('submit-title-image', { method: 'POST', body: data });
-            snapshot.titleSent = true;
-            titleDeliveryStatus.textContent = '';
-            submissionSuccess.hidden = true;
-            document.querySelector('.story-compose').hidden = true;
-            document.querySelector('.new-story-heading').hidden = true;
-            document.querySelector('.new-story-layout').classList.add('story-complete');
-            document.getElementById('storyHomeControls').hidden = false;
-            showTitlePreview();
-        } catch (error) {
-            titleDeliveryStatus.textContent = 'Title slide submission failed.';
-        } finally {
-            snapshot.titleSending = false;
-            titleOptions.querySelectorAll('input').forEach(input => { input.disabled = snapshot.titleSent; });
-            syncTitleStatus(snapshot);
-        }
+        if (!snapshot?.selectedTitle || snapshot.sending || snapshot.storySent || snapshot.titlesLoading) return;
+        snapshot.titleChosen = true;
+        submitButton.disabled = false;
+        await submitStory(event);
+    });
+    skipTitleButton.addEventListener('click', async event => {
+        const snapshot = submittedStory;
+        if (!snapshot || snapshot.sending || snapshot.storySent || snapshot.titlesLoading) return;
+        snapshot.selectedTitle = '';
+        snapshot.titleSlide = null;
+        snapshot.titleChosen = true;
+        previewTabs.hidden = true;
+        previewNavigation.hidden = false;
+        showSlide(activeSlide);
+        submitButton.disabled = false;
+        await submitStory(event);
     });
 
     async function submitStory(event) {
         event.preventDefault();
-        if (submitButton.disabled || submittedStory?.storySent) return;
+        if (submitButton.disabled || submittedStory?.storySent || submittedStory?.sending) return;
         const story = storyForSubmission();
         const isAdmin = story.startsWith('$');
+        if (!isAdmin && !submittedStory?.uploadAttempted && !checkSubmissionCooldown('story')) return;
         if (!story.replace(/^\$+/, '').trim() || (!isAdmin && Array.from(story).length > NORMAL_STORY_LIMIT)) {
             storyError.textContent = story ? 'Stories are limited to 2000 characters.' : 'Please enter your story.';
             storyInput.focus();
@@ -734,33 +913,61 @@
         const snapshot = submittedStory;
         snapshot.generateTitles = generateTitlesInput.checked;
         selectedTheme = snapshot.theme;
-        const paletteContainer = document.getElementById('themeOptions');
-        setButtonPressed(paletteContainer, paletteContainer.querySelectorAll('button')[themes.indexOf(selectedTheme)]);
+        syncPaletteSelection();
         applySlideColors();
         const formControls = [...form.querySelectorAll('input, textarea, button'), generateTitlesInput];
         formControls.forEach(control => { control.disabled = true; });
         slides[0].querySelector('.story-timestamp').textContent = snapshot.timestamp;
-        let uploadToken = '';
-        const batchCount = createUploadBatches(slides.length);
-
         try {
-            if (snapshot.generateTitles && !snapshot.preparationAttempted) {
-                snapshot.preparationAttempted = true;
-                try {
-                    const preparation = await apiJson('prepare-submission', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ story, age_gender: ageGender }),
-                    }, 15000);
-                    if (!preparation.submissionIntent) throw new Error('AI title preparation is unavailable.');
-                    snapshot.intent = preparation.submissionIntent;
-                } catch (error) {
-                    snapshot.titleError = 'Title generation failed.';
-                }
+            if (snapshot.generateTitles && !snapshot.titleChosen) {
+                snapshot.preparingTitles = true;
+                snapshot.preparationPending = !snapshot.preparationAttempted;
+                setSubmittingMessage('Preparing your story...');
+                submitButton.setAttribute('aria-busy', 'true');
+                titleSuggestions.hidden = true;
+                skipTitleButton.disabled = true;
+                const titleRequest = (async () => {
+                    if (!snapshot.preparationAttempted) {
+                        snapshot.preparationAttempted = true;
+                        try {
+                            const preparation = await apiJson('prepare-submission', {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ story, age_gender: ageGender }),
+                            }, 15000);
+                            if (!preparation.submissionIntent) throw new Error('AI title preparation is unavailable.');
+                            snapshot.intent = preparation.submissionIntent;
+                        } catch (error) {
+                            snapshot.titleError = 'Title generation failed.';
+                        }
+                    }
+                    snapshot.preparationPending = false;
+                    if (snapshot.intent) await requestTitles(snapshot);
+                })();
+                await new Promise(resolve => setTimeout(resolve, TITLE_TRANSITION_DELAY_MS));
+                snapshot.preparingTitles = false;
+                submitButton.removeAttribute('aria-busy');
+                form.hidden = true;
+                submitControls.hidden = true;
+                syncTitleStatus(snapshot);
+                await titleRequest;
+                syncTitleStatus(snapshot);
+                submitButton.disabled = false;
+                return;
             }
-            if (snapshot.generateTitles && snapshot.intent) void requestTitles(snapshot);
+            snapshot.sending = true;
+            syncTitleStatus(snapshot);
+            submitControls.hidden = false;
+            if (!snapshot.uploadSlides) {
+                snapshot.uploadSlides = snapshot.selectedTitle
+                    ? [snapshot.titleSlide || createTitleSlide(snapshot, snapshot.selectedTitle), ...slides]
+                    : [...slides];
+            }
+            const uploadSlides = snapshot.uploadSlides;
+            const batchCount = createUploadBatches(uploadSlides.length);
+            let uploadToken = '';
             for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
                 const start = batchIndex * SLIDES_PER_UPLOAD;
-                const end = Math.min(start + SLIDES_PER_UPLOAD, slides.length);
+                const end = Math.min(start + SLIDES_PER_UPLOAD, uploadSlides.length);
                 const data = new FormData();
                 data.append('story', story);
                 data.append('age_gender', ageGender);
@@ -770,9 +977,11 @@
                 if (snapshot.intent) data.append('submission_intent', snapshot.intent);
 
                 for (let index = start; index < end; index++) {
-                    setSubmittingMessage(`Rendering slide ${index + 1} of ${slides.length}...`);
-                    const image = await renderJpeg(slides[index]);
-                    data.append('images', image, `slide-${index + 1}.jpg`);
+                    setSubmittingMessage(`Rendering image ${index + 1} of ${uploadSlides.length}...`);
+                    const image = await renderJpeg(uploadSlides[index]);
+                    const filename = snapshot.selectedTitle && index === 0
+                        ? 'title-slide.jpg' : `slide-${index + 1 - (snapshot.selectedTitle ? 1 : 0)}.jpg`;
+                    data.append('images', image, filename);
                 }
 
                 setSubmittingMessage('Submitting story...');
@@ -790,19 +999,27 @@
             submitControls.hidden = true;
             submissionSuccess.hidden = false;
             snapshot.storySent = true;
-            if (!snapshot.submissionToken) snapshot.titleError = 'Title generation failed.';
+            if (!isAdmin) markSubmissionSuccessful('story');
+            snapshot.sending = false;
             syncTitleStatus(snapshot);
+            document.getElementById('storyHomeControls').hidden = false;
             submitStatus.textContent = '';
             if (typeof showToast === 'function') {
                 showToast('Posting to Instagram is subject to content and community rules.', 'success');
             }
         } catch (error) {
+            snapshot.preparingTitles = false;
+            snapshot.preparationPending = false;
+            submitButton.removeAttribute('aria-busy');
+            snapshot.sending = false;
             const uncertainDelivery = !snapshot.intent && snapshot.uploadAttempted
                 && (snapshot.completedBatches || !error.httpStatus || error.httpStatus >= 500);
             submitStatus.textContent = 'Story submission failed.';
             submitButton.disabled = Boolean(uncertainDelivery);
             submitButton.classList.remove('btn-disabled');
             submitButton.textContent = 'Submit Story';
+            form.hidden = false;
+            submitControls.hidden = false;
             formControls.forEach(control => { control.disabled = false; });
         }
     }
@@ -810,4 +1027,5 @@
     form.addEventListener('submit', submitStory);
 
     updateCharacterCount();
+    void loadSpecialThemes();
 })();
