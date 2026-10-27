@@ -172,6 +172,46 @@
   outline-offset: 3px;
 }
 
+.special-theme-option {
+  grid-column: 1 / -1;
+  border-color: var(--special-accent);
+}
+
+.special-theme-option[aria-pressed="true"] {
+  border-color: var(--special-accent);
+  box-shadow: 0 0 0 2px var(--special-accent);
+}
+
+.theme-chip.special-theme-chip {
+  display: flex;
+  min-height: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-color: var(--special-accent);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.story-compose .special-theme-label,
+.special-theme-label {
+  color: inherit;
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.story-compose .special-theme-mark,
+.special-theme-mark {
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
 .submit-story-button {
   width: 100%;
 }
