@@ -682,7 +682,7 @@
             const response = await fetch(`${API_ROOT}/${path}`, { ...options, signal: controller.signal });
             const result = await response.json();
             if (!response.ok) {
-                throw Object.assign(new Error(result.error || 'Request failed. Please try again later.'), { httpStatus: response.status });
+                throw Object.assign(new Error(result.error || 'Request failed. Please try again later.'), { httpStatus: response.status, reason: result.reason });
             }
             return result;
         } catch (error) {
@@ -1008,6 +1008,10 @@
                 showToast('Posting to Instagram is subject to content and community rules.', 'success');
             }
         } catch (error) {
+            if (error.reason === 'daily_submission_limit_reached') {
+                window.location.href = '../../FormStatus.html';
+                return;
+            }
             snapshot.preparingTitles = false;
             snapshot.preparationPending = false;
             submitButton.removeAttribute('aria-busy');
