@@ -418,13 +418,6 @@ function openStoryRules() {
     window.location.href = 'writeConfessionRules.html';
 }
 
-function openAdminStory() {
-    try {
-        sessionStorage.setItem('storyEditorEntry', JSON.stringify({ mode: 'admin', created: Date.now() }));
-    } catch {}
-    window.location.href = 'write/new/';
-}
-
 function chooseLatestExperience() {
     writeConfession();
 }

@@ -86,10 +86,74 @@
         <p>Do not write offensive content which may hurt fellow users</p>
       </div>
     </div>
+    <div class="card admin-entry-card">
+      <div class="icon"><i class="fas fa-lock" aria-hidden="true"></i></div>
+      <div class="content">
+        <h3>Admin</h3>
+        <p>For the people keeping the stories flowing.</p>
+        <button type="button" class="admin-entry-button" id="adminEntryButton">Admin access</button>
+      </div>
+    </div>
   </footer>
+  <dialog class="admin-dialog" id="adminDialog" aria-labelledby="adminDialogTitle">
+    <button class="confirmation-close" id="adminDialogClose" type="button" aria-label="Close admin panel" title="Close">
+      <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+    <section id="adminLoginView">
+      <p class="admin-eyebrow">INFY STORIES / ADMIN</p>
+      <h2 id="adminDialogTitle">Admin access</h2>
+      <p>Enter the admin key to open the control room.</p>
+      <div class="admin-mascot-wrap" id="adminMascotWrap">
+        <canvas id="adminMascotCanvas" aria-hidden="true"></canvas>
+      </div>
+      <form id="adminLoginForm">
+        <label for="adminUsername">Account</label>
+        <input id="adminUsername" name="username" type="text" value="Infy Stories Admin" autocomplete="username" readonly>
+        <label for="adminKey">Secret key</label>
+        <div class="admin-password-wrap">
+          <input id="adminKey" name="password" type="password" autocomplete="current-password" required>
+          <button type="button" class="admin-password-reveal" id="adminPasswordReveal" aria-label="Show admin key" aria-pressed="false" title="Show admin key">
+            <i class="fas fa-eye" aria-hidden="true"></i>
+          </button>
+        </div>
+        <button class="btn btn-primary" type="submit" id="adminLoginButton">
+          <i class="fas fa-unlock-alt" aria-hidden="true"></i><span>Unlock</span>
+        </button>
+        <p class="admin-message" id="adminLoginMessage" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+    <section id="adminPanelView" hidden>
+      <p class="admin-eyebrow">INFY STORIES / ADMIN</p>
+      <h2 id="adminPanelTitle">Control room</h2>
+      <p class="admin-message" id="adminActionMessage" role="status" aria-live="polite"></p>
+      <dl class="admin-stats" id="adminStats" aria-live="polite"></dl>
+      <div class="admin-actions">
+        <button type="button" class="btn btn-primary" id="adminWriteStory"><i class="fas fa-pen" aria-hidden="true"></i><span>Write story</span></button>
+        <button type="button" class="btn btn-secondary" id="adminToggleForm"><i class="fas fa-toggle-on" aria-hidden="true"></i><span>Change form status</span></button>
+        <button type="button" class="btn btn-secondary" id="adminResetCount"><i class="fas fa-redo" aria-hidden="true"></i><span>Reset daily count</span></button>
+        <button type="button" class="btn btn-secondary" id="adminClearIps"><i class="fas fa-broom" aria-hidden="true"></i><span>Clear IP cooldowns</span></button>
+      </div>
+      <p class="admin-footnote">IP cooldown clearing applies to the current running API instance.</p>
+      <div class="admin-session-actions">
+        <button type="button" class="admin-refresh" id="adminRefresh" aria-label="Refresh status" title="Refresh status"><i class="fas fa-sync-alt" aria-hidden="true"></i></button>
+        <button type="button" class="admin-logout" id="adminLogout">Lock admin</button>
+      </div>
+    </section>
+    <section id="adminConfirmView" hidden aria-labelledby="adminConfirmTitle">
+      <p class="admin-eyebrow">INFY STORIES / ADMIN</p>
+      <h2 id="adminConfirmTitle">Confirm admin action</h2>
+      <p id="adminConfirmMessage"></p>
+      <div class="confirmation-actions">
+        <button type="button" class="btn btn-secondary" id="adminConfirmCancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="adminConfirmContinue">Continue</button>
+      </div>
+    </section>
+  </dialog>
   <div class="credit-bar">
     <a href="https://www.linkedin.com/in/upendra-thunuguntla/">Designed and Developed by @Upendra-Thunuguntla</a>
   </div>
+  <script type="module" src="admin-mascot.js"></script>
+  <script src="admin.js" defer></script>
 </body>
 
 </html>

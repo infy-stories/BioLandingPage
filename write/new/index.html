@@ -8,12 +8,14 @@
   <title>Latest Story Experience | Infy Stories</title>
   <script>
     let entryMode = null;
+    let hasAdminKey = false;
     try {
+      hasAdminKey = Boolean(sessionStorage.getItem('infy:adminKey'));
       const entry = JSON.parse(sessionStorage.getItem('storyEditorEntry') || 'null');
       sessionStorage.removeItem('storyEditorEntry');
       if (entry && ['user', 'admin'].includes(entry.mode)
           && Date.now() - entry.created >= 0 && Date.now() - entry.created <= 300000) {
-        entryMode = entry.mode;
+        if (entry.mode !== 'admin' || hasAdminKey) entryMode = entry.mode;
       }
     } catch {}
     if (!entryMode && document.referrer) {
@@ -21,13 +23,13 @@
         const source = new URL(document.referrer);
         const path = source.pathname.replace(/\/+$/, '').toLowerCase();
         if (source.origin === location.origin) {
-          if (/(^|\/)aboutus(?:\.html)?$/.test(path)) entryMode = 'admin';
           if (/(^|\/)writeconfessionrules(?:\.html)?$/.test(path)) entryMode = 'user';
         }
       } catch {}
     }
     if (!entryMode && ['reload', 'back_forward'].includes(performance.getEntriesByType('navigation')[0]?.type)
-        && ['user', 'admin'].includes(history.state?.storyEntryMode)) {
+        && ['user', 'admin'].includes(history.state?.storyEntryMode)
+        && (history.state.storyEntryMode !== 'admin' || hasAdminKey)) {
       entryMode = history.state.storyEntryMode;
     }
     window.storyAdminEntry = entryMode === 'admin';
