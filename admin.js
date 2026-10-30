@@ -13,7 +13,6 @@
     const actionMessage = document.getElementById('adminActionMessage');
     const stats = document.getElementById('adminStats');
     let resolveConfirmation;
-    let mascotState = 'idle';
     const wrongKeyMessages = [
         'Nope. The key says this is not your door.',
         'That key opened exactly zero doors. One more go?',
@@ -34,18 +33,11 @@
         }
     }
 
-    function setMascotState(state) {
-        mascotState = state;
-        window.adminMascotCurrentState = state;
-        window.dispatchEvent(new CustomEvent('admin:mascot-state', { detail: { state } }));
-    }
-
     function setView(isAuthenticated) {
         loginView.hidden = isAuthenticated;
         panelView.hidden = !isAuthenticated;
         confirmView.hidden = true;
         dialog.setAttribute('aria-labelledby', isAuthenticated ? 'adminPanelTitle' : 'adminDialogTitle');
-        if (!isAuthenticated) setMascotState('idle');
         if (isAuthenticated) void refreshStatus();
     }
 
@@ -136,7 +128,7 @@
         if (!('PasswordCredential' in window) || !navigator.credentials?.store) return;
         try {
             await navigator.credentials.store(new PasswordCredential({
-                id: document.getElementById('adminUsername').value,
+                id: 'Infy Stories Admin',
                 name: 'Infy Stories Admin',
                 password: loginKey.value,
             }));
@@ -148,7 +140,6 @@
         if (!loginForm.reportValidity()) return;
         loginButton.disabled = true;
         loginMessage.textContent = 'Checking the key...';
-        setMascotState('thinking');
         const key = loginKey.value;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
@@ -163,10 +154,8 @@
             if (!response.ok) {
                 if (response.status === 401) {
                     loginMessage.textContent = wrongKeyMessages[Math.floor(Math.random() * wrongKeyMessages.length)];
-                    setMascotState('judgemental');
                 } else {
                     loginMessage.textContent = result.error || 'Admin access is not available right now.';
-                    setMascotState('confused');
                 }
                 loginKey.value = '';
                 return;
@@ -175,11 +164,9 @@
             sessionStorage.setItem('infy:adminKey', key);
             loginKey.value = '';
             loginMessage.textContent = '';
-            setMascotState('happy');
-            setTimeout(() => setView(true), 380);
+            setView(true);
         } catch {
             loginMessage.textContent = 'Could not reach the control room. Check the connection and try again.';
-            setMascotState('confused');
         } finally {
             clearTimeout(timeout);
             loginButton.disabled = false;
@@ -222,16 +209,6 @@
         setView(false);
     });
 
-    loginKey.addEventListener('focus', () => {
-        if (loginKey.type === 'text') setMascotState('peek');
-        else setMascotState('idle');
-    });
-    loginKey.addEventListener('input', () => {
-        setMascotState(loginKey.type === 'text' ? 'peek' : 'typing');
-    });
-    loginKey.addEventListener('blur', () => {
-        if (mascotState === 'typing' || mascotState === 'peek') setMascotState('idle');
-    });
     document.getElementById('adminPasswordReveal').addEventListener('click', event => {
         const reveal = loginKey.type === 'password';
         loginKey.type = reveal ? 'text' : 'password';
@@ -241,7 +218,6 @@
         button.title = reveal ? 'Hide admin key' : 'Show admin key';
         button.querySelector('i').className = reveal ? 'fas fa-eye-slash' : 'fas fa-eye';
         loginKey.focus();
-        setMascotState(reveal ? 'peek' : loginKey.value ? 'typing' : 'idle');
     });
 
     if (sessionStorage.getItem('infy:adminPrompt') === '1') {

@@ -30,8 +30,9 @@ over HTTP, such as VS Code Live Server, so the browser can fetch the JSON regist
 Set `ADMIN_KEY` as a Vercel environment secret for the API deployment, then redeploy.
 The home page includes a visible Admin entry. The key is checked by the API and
 kept in `sessionStorage` only for the current browser tab; the login form uses
-standard username/password fields and the Credential Management API where the
-browser supports it, so compatible password managers can save and autofill it.
+one password field with `current-password` autocomplete and the Credential
+Management API where the browser supports it, so compatible password managers
+can save and autofill the key.
 No key should be added to frontend source or committed files.
 
 The admin panel can compose a story, check form and cooldown counts, toggle form
