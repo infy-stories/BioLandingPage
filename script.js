@@ -347,26 +347,42 @@ function showConfirmationModal(message, options = {}) {
     });
 }
 
+function fetchFormStatus() {
+    return fetch(host + "/formStatus", {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'text/plain;charset=UTF-8',
+        },
+    }).then(response => response.text());
+}
+
+function prefetchFormStatus() {
+    window.choiceFormStatusPromise = fetchFormStatus();
+    // Mark handled; writeConfession still sees the rejection.
+    window.choiceFormStatusPromise.catch(() => {});
+}
+
 function writeConfession() {
     if (!checkSubmissionCooldown('story')) return;
     // Add loading visuals
     const storyBtn = document.getElementById("story");
+    const storyBtnHtml = storyBtn && storyBtn.innerHTML;
     if (storyBtn) {
         storyBtn.innerHTML = "<span class='spinner'></span> Loading...";
         storyBtn.disabled = true;
         storyBtn.classList.add("btn-disabled");
     }
 
-    const formStatusRequest = window.choiceFormStatusPromise || fetch(host + "/formStatus", {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'text/plain;charset=UTF-8',
-        },
-    }).then(response => response.text());
+    const formStatusRequest = window.choiceFormStatusPromise || fetchFormStatus();
 
     formStatusRequest
         .then(responseText => {
             if (responseText === '1') {
+                if (storyBtn) {
+                    storyBtn.innerHTML = storyBtnHtml;
+                    storyBtn.disabled = false;
+                    storyBtn.classList.remove("btn-disabled");
+                }
                 showConfirmationModal("Make sure you are submitting only the story and not a query.", {
                     confirmText: "Continue to story",
                     cancelText: "Write a query",
@@ -402,27 +418,8 @@ function openStoryRules() {
     window.location.href = 'writeConfessionRules.html';
 }
 
-function openAdminStory() {
-    try {
-        sessionStorage.setItem('storyEditorEntry', JSON.stringify({ mode: 'admin', created: Date.now() }));
-    } catch {}
-    window.location.href = 'write/new/';
-}
-
 function chooseLatestExperience() {
-    if (!checkSubmissionCooldown('story')) return;
-    showConfirmationModal("Make sure you are submitting only the story and not a query.", {
-        confirmText: "Continue to story",
-        cancelText: "Write a query",
-    }).then(confirmed => {
-        if (confirmed === true) {
-            openStoryRules();
-        } else if (confirmed === false) {
-            if (checkSubmissionCooldown('query')) window.location.href = 'writeQuery.html';
-        } else {
-            window.location.href = 'index.html';
-        }
-    });
+    writeConfession();
 }
 
 function json(url) {

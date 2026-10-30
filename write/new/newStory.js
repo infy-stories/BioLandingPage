@@ -679,10 +679,21 @@
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeout);
         try {
-            const response = await fetch(`${API_ROOT}/${path}`, { ...options, signal: controller.signal });
+            const headers = new Headers(options.headers || {});
+            if (adminEntry) {
+                const key = sessionStorage.getItem('infy:adminKey');
+                if (!key) throw new Error('Admin session expired. Please unlock admin access again.');
+                headers.set('Authorization', `Bearer ${key}`);
+            }
+            const response = await fetch(`${API_ROOT}/${path}`, { ...options, headers, signal: controller.signal });
             const result = await response.json();
             if (!response.ok) {
-                throw Object.assign(new Error(result.error || 'Request failed. Please try again later.'), { httpStatus: response.status });
+                if (response.status === 401 && adminEntry) {
+                    sessionStorage.removeItem('infy:adminKey');
+                    sessionStorage.setItem('infy:adminPrompt', '1');
+                    window.location.href = '../../index.html';
+                }
+                throw Object.assign(new Error(result.error || 'Request failed. Please try again later.'), { httpStatus: response.status, reason: result.reason });
             }
             return result;
         } catch (error) {
@@ -1008,6 +1019,10 @@
                 showToast('Posting to Instagram is subject to content and community rules.', 'success');
             }
         } catch (error) {
+            if (error.reason === 'daily_submission_limit_reached') {
+                window.location.href = '../../FormStatus.html';
+                return;
+            }
             snapshot.preparingTitles = false;
             snapshot.preparationPending = false;
             submitButton.removeAttribute('aria-busy');
