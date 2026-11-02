@@ -194,62 +194,6 @@ function postQuery() {
 }
 
 
-function postConfession() {
-    const isAdmin = document.getElementById("message").value.trim().startsWith('$');
-    if (!isAdmin && !checkSubmissionCooldown('story')) return;
-    if (document.getElementById("message").value == "") {
-        showToast("Please enter your Story", "error", document.getElementById("message"));
-    } else {
-        pc_button.innerText = "Submitting...."
-        pc_button.disabled = true;
-        pc_button.className = "btn btn-disabled"
-        var myHeaders = new Headers();
-        myHeaders.append("Content-Type", "application/json");
-        myHeaders.append("Access-Control-Allow-Origin", "*");
-
-        var rawMessage = message.value.trim();
-        var finalMessage = age_gender.value + "\n" + rawMessage;
-
-        // If content starts with $, move it to the very beginning (above age/gender)
-        if (rawMessage.startsWith('$')) {
-            finalMessage = "$\n" + age_gender.value + "\n" + rawMessage.substring(1).trim();
-        }
-
-        var raw = JSON.stringify({
-            "message": finalMessage.trim()
-        });
-
-        var requestOptions = {
-            method: 'POST',
-            headers: myHeaders,
-            body: raw,
-            redirect: 'follow'
-        };
-
-        fetch(host + "/postConfession", requestOptions)
-            .then(async response => {
-                const result = await response.text();
-                if (!response.ok) throw new Error(result || 'Story submission failed');
-                return result;
-            })
-            .then(result => {
-                if (!isAdmin) markSubmissionSuccessful('story');
-                showToast(result, 'success');
-                setTimeout(() => {
-                    window.open("index.html", "_self");
-                }, 2000);
-            })
-            .catch(error => {
-                console.log('error', error);
-                showToast("Failed to submit story!", "error");
-                pc_button.innerText = "Submit Story";
-                pc_button.disabled = false;
-                pc_button.className = "btn btn-primary";
-            });
-    }
-}
-
-
 function writeQuery() {
     if (!checkSubmissionCooldown('query')) return;
     showConfirmationModal("Make sure you are writing the query in detail", {

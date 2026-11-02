@@ -1,5 +1,11 @@
 ## Infosys Hyderabad Story Page
 
+Stories are rendered in [the frontend editor](write/new/index.html) and uploaded
+as ordered JPEG batches to `/api/postConfession`. The old
+[story URL](writeConfession.html) redirects through the rules page to that editor;
+the legacy JSON `/postConfession` submission and server-side story renderer are
+retired.
+
 ### Special Story Themes
 
 [special_themes/themes.json](special_themes/themes.json) contains scheduled palettes
