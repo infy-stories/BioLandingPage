@@ -250,7 +250,9 @@
 }
 
 .submission-success {
+  grid-column: 1 / -1;
   padding-top: 1rem;
+  scroll-margin-top: 5rem;
 }
 
 .submission-success h3 {
@@ -264,11 +266,13 @@
 }
 
 .title-suggestions {
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   padding-top: 1rem;
   border-top: 1px solid var(--glass-border);
+  scroll-margin-top: 5rem;
 }
 
 .title-suggestions > h3 {
@@ -802,18 +806,6 @@
   .new-story-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
-  }
-
-  .story-compose {
-    grid-row: 1;
-  }
-
-  .story-preview-panel {
-    grid-row: 2;
-  }
-
-  .story-submit-controls {
-    grid-row: 3;
   }
 
   .experience-choice {

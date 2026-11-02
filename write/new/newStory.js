@@ -39,6 +39,7 @@
     const submitStatus = document.getElementById('submitStatus');
     const characterCount = document.getElementById('characterCount');
     const storyError = document.getElementById('storyError');
+    const storyCompose = document.querySelector('.story-compose');
     const submitControls = document.querySelector('.story-submit-controls');
     const submissionSuccess = document.getElementById('submissionSuccess');
     const generateTitlesInput = document.getElementById('generateTitles');
@@ -675,6 +676,14 @@
         submitButton.textContent = message;
     }
 
+    function revealPanel(panel) {
+        panel.focus({ preventScroll: true });
+        const bounds = panel.getBoundingClientRect();
+        if (bounds.top < 0 || bounds.bottom > window.innerHeight) {
+            panel.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+    }
+
     async function apiJson(path, options, timeout = 60000) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeout);
@@ -958,11 +967,13 @@
                 snapshot.preparingTitles = false;
                 submitButton.removeAttribute('aria-busy');
                 form.hidden = true;
+                storyCompose.hidden = true;
                 submitControls.hidden = true;
                 syncTitleStatus(snapshot);
                 await titleRequest;
                 syncTitleStatus(snapshot);
                 submitButton.disabled = false;
+                if (!titleSuggestions.hidden) revealPanel(titleSuggestions);
                 return;
             }
             snapshot.sending = true;
@@ -1007,6 +1018,7 @@
             }
 
             form.hidden = true;
+            storyCompose.hidden = true;
             submitControls.hidden = true;
             submissionSuccess.hidden = false;
             snapshot.storySent = true;
@@ -1015,6 +1027,7 @@
             syncTitleStatus(snapshot);
             document.getElementById('storyHomeControls').hidden = false;
             submitStatus.textContent = '';
+            revealPanel(submissionSuccess);
             if (typeof showToast === 'function') {
                 showToast('Posting to Instagram is subject to content and community rules.', 'success');
             }
@@ -1033,6 +1046,7 @@
             submitButton.disabled = Boolean(uncertainDelivery);
             submitButton.classList.remove('btn-disabled');
             submitButton.textContent = 'Submit Story';
+            storyCompose.hidden = false;
             form.hidden = false;
             submitControls.hidden = false;
             formControls.forEach(control => { control.disabled = false; });

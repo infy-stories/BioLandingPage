@@ -1,108 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q3SY8F9P01"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-
-    gtag('config', 'G-Q3SY8F9P01');
-  </script>
-  <script>
-    // Strict redirect: prevent direct access
-    const ref = document.referrer.toLowerCase();
-    const isFromRules = ref.includes('writeconfessionrules');
-    const isFromAbout = ref.includes('aboutus');
-    if (!ref || (!isFromRules && !isFromAbout)) {
-      window.location.href = 'index.html';
-    }
-  </script>
-
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Write Story</title>
-  <meta name="description" content="Submit your anonymous story on Infy Stories.">
-  <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css'>
-  <link rel="stylesheet" href="./style.css">
-  <link rel="icon" href="./res/logoBig-noBg.png" type="image/icon type">
-  <script src="script.js"></script>
+  <meta http-equiv="refresh" content="0;url=writeConfessionRules.html">
+  <title>Story editor moved | Infy Stories</title>
+  <script>
+    try { sessionStorage.setItem('storyRulesEntry', String(Date.now())); } catch {}
+    window.location.replace('writeConfessionRules.html');
+  </script>
 </head>
-
-<body oncontextmenu="return true">
-  <header>
-    <h1 onclick="location.href ='index.html';" class="logo">Infy Stories</h1>
-    <div class="nav-links" id="navLinks">
-      <ul>
-        <li onclick="location.href ='index.html';" class="active">Home</li>
-        <li onclick="location.href ='imageCollection.html';">Photos</li>
-        <li onclick="location.href ='aboutUs.html';">About Us</li>
-      </ul>
-      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
-    </div>
-
-  </header>
-
-  <section id="hero">
-    <img src="./res/hero-story.webp" alt="Write story illustration">
-    <div class="left">
-
-      <label for="message">Your Story:</label>
-      <input type="text" id="age_gender" name="age_gender" placeholder="24/M" autocomplete="off">
-      <br>
-      <div class="wrapper">
-        <textarea id="message" name="message" onkeyup="checkLength()"
-          placeholder="write away your thoughts.."></textarea>
-        <div id="char-count" style="color: white;">
-          <span id="current">2000</span> characters remaining
-        </div>
-      </div>
-      <br>
-
-      <button onclick="postConfession()" id="pc_button" class="btn btn-primary">Submit Story</button>
-
-      <script>
-        // Check if navigated from aboutUs.html and prefill $
-        if (document.referrer.endsWith('/aboutUs.html')) {
-          const msgField = document.getElementById('message');
-          msgField.value = '$ ';
-          // Trigger the length check
-          if (typeof checkLength === 'function') checkLength();
-        }
-      </script>
-    </div>
-  </section>
-
-  <footer>
-    <div class="card">
-      <div class="icon">
-        <i class="fas fa-map-marker-alt"></i>
-      </div>
-      <div class="content">
-        <h3>Where are we 🐱‍💻 </h3>
-        <p>Available on
-          <a class="socialmedia" href="http://instagram.com/infy_stories">Instagram</a>
-          &amp;
-          <a class="socialmedia" href="http://t.me/infy_stories">Telegram</a>
-        </p>
-      </div>
-    </div>
-    <div class="card">
-      <div class="icon">
-        <i class="fas fa-code"></i>
-      </div>
-      <div class="content">
-        <h3>Clean Story</h3>
-        <p>Do not write offensive stories which may hurt fellow users</p>
-      </div>
-    </div>
-  </footer>
-
-  <div class="credit-bar">
-    <a href="https://www.linkedin.com/in/upendra-thunuguntla/">Designed and Developed by @Upendra-Thunuguntla</a>
-  </div>
+<body>
+  <p>The story editor has moved. <a href="writeConfessionRules.html">Continue to the story rules and editor</a>.</p>
 </body>
-
 </html>

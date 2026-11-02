@@ -102,29 +102,6 @@
           </div>
         </form>
 
-        <section class="submission-success" id="submissionSuccess" hidden>
-          <h3>Story submitted successfully.</h3>
-          <p>Your story has been received.</p>
-        </section>
-
-        <section class="title-suggestions" id="titleSuggestions" hidden aria-label="AI title suggestions">
-          <h3>Suggested titles</h3>
-          <p id="titleGenerationStatus" class="submit-status" role="status"></p>
-          <button id="retryTitles" type="button" class="preview-arrow title-retry" aria-label="Retry title generation" title="Retry title generation" hidden>
-            <i class="fas fa-redo" aria-hidden="true"></i>
-          </button>
-          <form id="titleForm" hidden>
-            <fieldset class="title-options">
-              <legend>Choose a title</legend>
-              <div id="titleOptions"></div>
-            </fieldset>
-            <button id="submitTitle" type="submit" class="btn btn-primary title-action-button" disabled>
-              <i class="fas fa-paper-plane" aria-hidden="true"></i>
-              <span>Submit story with title</span>
-            </button>
-          </form>
-          <button id="skipTitle" type="button" class="btn btn-secondary title-action-button">Submit without title</button>
-        </section>
       </section>
 
       <section class="story-preview-panel" aria-label="Live story preview">
@@ -150,6 +127,30 @@
             <i class="fas fa-chevron-right" aria-hidden="true"></i>
           </button>
         </div>
+      </section>
+
+      <section class="title-suggestions" id="titleSuggestions" hidden aria-label="AI title suggestions" tabindex="-1">
+        <h3>Suggested titles</h3>
+        <p id="titleGenerationStatus" class="submit-status" role="status"></p>
+        <button id="retryTitles" type="button" class="preview-arrow title-retry" aria-label="Retry title generation" title="Retry title generation" hidden>
+          <i class="fas fa-redo" aria-hidden="true"></i>
+        </button>
+        <form id="titleForm" hidden>
+          <fieldset class="title-options">
+            <legend>Choose a title</legend>
+            <div id="titleOptions"></div>
+          </fieldset>
+          <button id="submitTitle" type="submit" class="btn btn-primary title-action-button" disabled>
+            <i class="fas fa-paper-plane" aria-hidden="true"></i>
+            <span>Submit story with title</span>
+          </button>
+        </form>
+        <button id="skipTitle" type="button" class="btn btn-secondary title-action-button">Submit without title</button>
+      </section>
+
+      <section class="submission-success" id="submissionSuccess" hidden aria-live="polite" tabindex="-1">
+        <h3>Story submitted successfully.</h3>
+        <p>Your story has been received.</p>
       </section>
 
       <div class="story-submit-controls">
